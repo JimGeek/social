@@ -1,0 +1,471 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import socialAPI, { SocialPlatform, SocialAccount, AIContentSuggestion } from '../../services/socialApi';
+
+interface CreatePostProps {}
+
+const CreatePost: React.FC<CreatePostProps> = () => {
+  const navigate = useNavigate();
+  const { organizationSlug } = useParams<{ organizationSlug: string }>();
+  
+  // State management
+  const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  
+  // Post content state
+  const [content, setContent] = useState('');
+  const [postType, setPostType] = useState<'text' | 'image' | 'video' | 'carousel'>('text');
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [firstComment, setFirstComment] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
+  
+  // AI assistance state
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [aiSuggestions, setAISuggestions] = useState<AIContentSuggestion[]>([]);
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [selectedPlatformForAI, setSelectedPlatformForAI] = useState('facebook');
+  
+  // UI state
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [characterCount, setCharacterCount] = useState(0);
+  const [hashtagInput, setHashtagInput] = useState('');
+  
+  // Load data on component mount
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+  
+  // Update character count when content changes
+  useEffect(() => {
+    setCharacterCount(content.length);
+  }, [content]);
+  
+  const loadInitialData = async () => {
+    try {
+      const [platformsData, accountsData] = await Promise.all([
+        socialAPI.getPlatforms(),
+        socialAPI.getAccounts()
+      ]);
+      
+      setPlatforms(platformsData);
+      setAccounts(accountsData.filter(acc => acc.status === 'connected'));
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    }
+  };
+  
+  const handleAccountToggle = (accountId: string) => {
+    const account = accounts.find(acc => acc.id === accountId);
+    if (!account?.posting_enabled) {
+      // Don't allow toggling disabled accounts
+      return;
+    }
+    
+    setSelectedAccounts(prev => 
+      prev.includes(accountId) 
+        ? prev.filter(id => id !== accountId)
+        : [...prev, accountId]
+    );
+  };
+  
+  const addHashtag = () => {
+    if (hashtagInput.trim() && !hashtags.includes(hashtagInput.trim())) {
+      const tag = hashtagInput.trim().replace('#', '');
+      setHashtags(prev => [...prev, tag]);
+      setHashtagInput('');
+    }
+  };
+  
+  const removeHashtag = (tagToRemove: string) => {
+    setHashtags(prev => prev.filter(tag => tag !== tagToRemove));
+  };
+  
+  const getAISuggestions = async (action: 'improve' | 'shorten' | 'expand' | 'rewrite') => {
+    if (!content.trim()) return;
+    
+    setIsAILoading(true);
+    try {
+      const suggestions = await socialAPI.getAIContentSuggestions({
+        content,
+        platform: selectedPlatformForAI,
+        action
+      });
+      
+      setAISuggestions(suggestions);
+      setShowAISuggestions(true);
+    } catch (error) {
+      console.error('Failed to get AI suggestions:', error);
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+  
+  const applySuggestion = (suggestion: AIContentSuggestion) => {
+    setContent(suggestion.content);
+    setShowAISuggestions(false);
+  };
+  
+  const handlePublish = async (publishNow: boolean = true) => {
+    if (!content.trim() || selectedAccounts.length === 0) {
+      return;
+    }
+    
+    setIsPublishing(true);
+    try {
+      // Create the post
+      const postData = {
+        content,
+        post_type: postType,
+        hashtags,
+        first_comment: firstComment,
+        target_accounts: selectedAccounts
+      };
+      
+      const createdPost = await socialAPI.createPost(postData);
+      
+      if (publishNow) {
+        // Publish immediately
+        await socialAPI.publishPost(createdPost.id, selectedAccounts);
+        alert('Post published successfully!');
+      } else if (scheduledAt) {
+        // Schedule for later - convert local time to UTC
+        const localDateTime = new Date(scheduledAt);
+        const utcDateTime = localDateTime.toISOString();
+        await socialAPI.schedulePost(createdPost.id, utcDateTime, selectedAccounts);
+        alert('Post scheduled successfully!');
+      } else {
+        // Save as draft
+        alert('Post saved as draft!');
+      }
+      
+      // Reset form
+      setContent('');
+      setHashtags([]);
+      setFirstComment('');
+      setSelectedAccounts([]);
+      setScheduledAt('');
+      
+    } catch (error) {
+      console.error('Failed to publish post:', error);
+      alert('Failed to publish post. Please try again.');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+  
+  const getCharacterLimit = () => {
+    if (selectedAccounts.length === 0) return 2000;
+    
+    const selectedPlatformNames = selectedAccounts.map(id => {
+      const account = accounts.find(acc => acc.id === id);
+      return account?.platform.name;
+    });
+    
+    const limits = selectedPlatformNames.map(platformName => {
+      const platform = platforms.find(p => p.name === platformName);
+      return platform?.max_text_length || 2000;
+    });
+    
+    return Math.min(...limits);
+  };
+  
+  const characterLimit = getCharacterLimit();
+  const isOverLimit = characterCount > characterLimit;
+  
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Create Post</h1>
+        <p className="text-gray-600 mt-2">Create and publish content across your social media platforms</p>
+      </div>
+      
+      {/* Platform Selection */}
+      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Select Platforms</h2>
+        
+        {accounts.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-4">
+              <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <h3 className="text-gray-900 font-medium mb-2">No connected accounts</h3>
+            <p className="text-gray-500 mb-4">Connect your social media accounts to start posting</p>
+            <button
+              onClick={() => navigate(`/${organizationSlug}/social/settings`)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Connect Accounts
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {accounts.map((account) => (
+              <div
+                key={account.id}
+                onClick={() => handleAccountToggle(account.id)}
+                className={`p-4 border-2 rounded-lg transition-all ${
+                  !account.posting_enabled
+                    ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-60'
+                    : selectedAccounts.includes(account.id)
+                    ? 'border-blue-500 bg-blue-50 cursor-pointer'
+                    : 'border-gray-200 hover:border-gray-300 cursor-pointer'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                    style={{ backgroundColor: account.platform.color_hex }}
+                  >
+                    {account.platform.display_name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{account.account_name}</p>
+                    <p className="text-sm text-gray-500">{account.platform.display_name}</p>
+                    {!account.posting_enabled && (
+                      <p className="text-xs text-red-500 flex items-center space-x-1 mt-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
+                        </svg>
+                        <span>Posting disabled</span>
+                      </p>
+                    )}
+                  </div>
+                  {selectedAccounts.includes(account.id) && account.posting_enabled && (
+                    <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  {!account.posting_enabled && (
+                    <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* Content Composer */}
+      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Compose Post</h2>
+          <div className="flex items-center space-x-2">
+            <span className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>
+              {characterCount}/{characterLimit}
+            </span>
+            {isOverLimit && (
+              <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
+        </div>
+        
+        <div className="relative">
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="What's on your mind?"
+            rows={6}
+            className={`w-full p-4 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              isOverLimit ? 'border-red-300 bg-red-50' : 'border-gray-300'
+            }`}
+          />
+          
+          {/* AI Assistance Buttons */}
+          <div className="absolute bottom-3 right-3 flex space-x-1">
+            <button
+              onClick={() => getAISuggestions('improve')}
+              disabled={!content.trim() || isAILoading}
+              className="p-2 text-gray-500 hover:text-blue-600 disabled:opacity-50"
+              title="AI Improve"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => getAISuggestions('shorten')}
+              disabled={!content.trim() || isAILoading}
+              className="p-2 text-gray-500 hover:text-blue-600 disabled:opacity-50"
+              title="AI Shorten"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </button>
+            <button
+              onClick={() => getAISuggestions('expand')}
+              disabled={!content.trim() || isAILoading}
+              className="p-2 text-gray-500 hover:text-blue-600 disabled:opacity-50"
+              title="AI Expand"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        {/* AI Suggestions Panel */}
+        {showAISuggestions && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium text-blue-900">AI Suggestions</h3>
+              <button
+                onClick={() => setShowAISuggestions(false)}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {aiSuggestions.map((suggestion, index) => (
+                <div key={index} className="p-3 bg-white rounded border">
+                  <p className="text-gray-800 mb-2">{suggestion.content}</p>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs ${suggestion.within_limit ? 'text-green-600' : 'text-red-600'}`}>
+                      {suggestion.character_count} characters
+                    </span>
+                    <button
+                      onClick={() => applySuggestion(suggestion)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Use This
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Advanced Options */}
+      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <h2 className="text-lg font-semibold">Advanced Options</h2>
+          <svg 
+            className={`w-5 h-5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {showAdvanced && (
+          <div className="mt-4 space-y-4">
+            {/* Hashtags */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Hashtags</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {hashtags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                  >
+                    #{tag}
+                    <button
+                      onClick={() => removeHashtag(tag)}
+                      className="ml-2 text-blue-600 hover:text-blue-800"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={hashtagInput}
+                  onChange={(e) => setHashtagInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addHashtag()}
+                  placeholder="Add hashtag"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={addHashtag}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+            
+            {/* First Comment */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                First Comment (Instagram/Facebook)
+              </label>
+              <textarea
+                value={firstComment}
+                onChange={(e) => setFirstComment(e.target.value)}
+                placeholder="Add a first comment..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            {/* Scheduling */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Schedule Post</label>
+              <input
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={() => handlePublish(false)}
+          disabled={!content.trim() || selectedAccounts.length === 0 || isPublishing}
+          className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Save as Draft
+        </button>
+        
+        {scheduledAt && (
+          <button
+            onClick={() => handlePublish(false)}
+            disabled={!content.trim() || selectedAccounts.length === 0 || isPublishing}
+            className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isPublishing ? 'Scheduling...' : 'Schedule Post'}
+          </button>
+        )}
+        
+        <button
+          onClick={() => handlePublish(true)}
+          disabled={!content.trim() || selectedAccounts.length === 0 || isPublishing || isOverLimit}
+          className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isPublishing ? 'Publishing...' : 'Publish Now'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default CreatePost;
