@@ -81,6 +81,11 @@ def deploy_application():
     """Execute deployment steps"""
     deployment_steps = [
         {
+            'name': 'Git Stash Local Changes',
+            'command': 'git stash',
+            'cwd': PROJECT_PATH
+        },
+        {
             'name': 'Git Pull',
             'command': 'git pull origin master',
             'cwd': PROJECT_PATH
@@ -132,7 +137,7 @@ def deploy_application():
         
         deployment_log.append(step_result)
         
-        if not success and step['name'] not in ['Restart Gunicorn', 'Restart Celery Workers', 'Restart Celery Beat']:
+        if not success and step['name'] not in ['Restart Gunicorn Service', 'Restart Celery Worker Service', 'Restart Celery Beat Service', 'Git Stash Local Changes']:
             logger.error(f"Deployment failed at step: {step['name']}")
             return False, deployment_log
     
