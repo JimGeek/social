@@ -26,7 +26,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
 
     // If token is provided, store it in localStorage to restore authentication
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem('authToken', token);
     }
 
     if (success === 'facebook_connected') {
