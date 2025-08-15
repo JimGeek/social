@@ -24,7 +24,10 @@ The development environment uses SQLite (no external database required):
 
 ```bash
 python manage.py migrate
+python manage.py setup_platforms
 ```
+
+This will create the database and add all social media platforms (Facebook, Instagram, LinkedIn, Twitter/X, YouTube, Pinterest, TikTok).
 
 ### 4. Run Development Server
 
