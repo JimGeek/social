@@ -1903,11 +1903,6 @@ class LinkedInCallbackView(APIView):
         state = request.GET.get('state')
         error = request.GET.get('error')
         
-        # Debug logging for OAuth parameters
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"LinkedIn OAuth Debug - Code: {code}, State: {state}, Error: {error}")
-        
         # Get user from state parameter
         user = None
         org_slug = 'social'
@@ -1975,24 +1970,18 @@ class LinkedInCallbackView(APIView):
             # Calculate token expiration
             token_expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
             
-            # Debug the field lengths
-            profile_picture_url = profile_data['profile_picture_url']
-            account_name = f"{profile_data['first_name']} {profile_data['last_name']}".strip()
-            logger.error(f"LinkedIn field lengths - account_name: {len(account_name)}, profile_picture_url: {len(profile_picture_url)}")
-            logger.error(f"Profile picture URL: {profile_picture_url}")
-            
-            # Truncate fields to database limits
-            truncated_profile_picture_url = profile_picture_url[:500] if profile_picture_url else ''
-            truncated_account_name = account_name[:200] if account_name else ''
+            # Prepare account data with database field limits
+            profile_picture_url = profile_data['profile_picture_url'][:500] if profile_data['profile_picture_url'] else ''
+            account_name = f"{profile_data['first_name']} {profile_data['last_name']}".strip()[:200]
             
             # Create or update LinkedIn account
             linkedin_account, created = SocialAccount.objects.update_or_create(
                 platform=linkedin_platform,
                 account_id=profile_data['id'],
                 defaults={
-                    'account_name': truncated_account_name,
+                    'account_name': account_name,
                     'account_username': '',  # LinkedIn doesn't provide username in basic profile
-                    'profile_picture_url': truncated_profile_picture_url,
+                    'profile_picture_url': profile_picture_url,
                     'access_token': access_token,
                     'refresh_token': '',  # LinkedIn doesn't support refresh tokens
                     'token_expires_at': token_expires_at,
