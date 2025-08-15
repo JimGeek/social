@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import socialAPI, { SocialPlatform, SocialAccount, AIContentSuggestion } from '../../services/socialApi';
+import api from '../../services/api';
 
 interface MediaFile {
   id: string;
@@ -107,14 +108,10 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       
       for (const platformName of platformNames) {
         try {
-          const response = await fetch(`/api/social/platforms/capabilities/?platform=${platformName}`, {
-            headers: {
-              'Authorization': `Token ${localStorage.getItem('token')}`
-            }
-          });
+          const response = await api.get(`/api/social/platforms/capabilities/?platform=${platformName}`);
           
-          if (response.ok) {
-            const data = await response.json();
+          if (response.status === 200) {
+            const data = response.data;
             if (data.account_capabilities && data.account_capabilities.length > 0) {
               capabilities[platformName] = data.account_capabilities[0].supported_types;
             }
@@ -241,25 +238,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         : 'instagram';
         
       const uploadPromises = files.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('platform', platformName);
-        formData.append('post_type', postType);
-        
-        const response = await fetch('/api/social/media/upload/', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Token ${localStorage.getItem('token')}`
-          },
-          body: formData
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.errors?.join(', ') || 'Upload failed');
-        }
-        
-        const result = await response.json();
+        const result = await socialAPI.uploadMedia(file, true);
         return result.file;
       });
       
