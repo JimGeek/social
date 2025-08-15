@@ -31,10 +31,10 @@ python manage.py migrate
 Start the Django development server:
 
 ```bash
-python manage.py runserver 8080
+python manage.py runserver 8000
 ```
 
-The API will be available at: `http://localhost:8080`
+The API will be available at: `http://localhost:8000`
 
 ## Environment Configuration
 
@@ -111,7 +111,7 @@ Test the API endpoints:
 
 ```bash
 # Check server health
-curl http://localhost:8080/api/social/accounts/
+curl http://localhost:8000/api/social/accounts/
 
 # Expected response: Authentication required
 ```
@@ -132,9 +132,9 @@ python manage.py runserver
 Try a different port:
 
 ```bash
-python manage.py runserver 8080
-# or
 python manage.py runserver 8001
+# or
+python manage.py runserver 8080
 ```
 
 ### Missing Dependencies
