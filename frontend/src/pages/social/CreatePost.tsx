@@ -79,6 +79,29 @@ const CreatePost: React.FC<CreatePostProps> = () => {
     validatePost();
   }, [content, mediaFiles, selectedAccounts, postType]);
   
+  // Clear form when account selection changes significantly
+  useEffect(() => {
+    // Only clear if we're switching between different platform types
+    const currentPlatforms = selectedAccounts.map(id => 
+      accounts.find(acc => acc.id === id)?.platform.name
+    ).filter(Boolean);
+    
+    const uniquePlatforms = [...new Set(currentPlatforms)];
+    
+    // If platforms changed, clear media files as different platforms have different requirements
+    if (uniquePlatforms.length > 0) {
+      // Clear media files when switching between platforms with different capabilities
+      const needsClear = uniquePlatforms.some(platform => {
+        const prevPlatforms = mediaFiles.length > 0 ? ['instagram'] : []; // Default assumption
+        return !prevPlatforms.includes(platform);
+      });
+      
+      if (needsClear) {
+        setMediaFiles([]);
+      }
+    }
+  }, [selectedAccounts, accounts]);
+  
   const loadInitialData = async () => {
     try {
       const [platformsData, accountsData] = await Promise.all([
@@ -194,6 +217,19 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         ? prev.filter(id => id !== accountId)
         : [...prev, accountId]
     );
+  };
+  
+  const handlePostTypeChange = (newPostType: typeof postType) => {
+    // Clear media files and related state when changing post type
+    setPostType(newPostType);
+    setMediaFiles([]);
+    setFirstComment('');
+    
+    // Also clear content if switching between text and media types
+    if ((postType === 'text' && newPostType !== 'text') || 
+        (postType !== 'text' && newPostType === 'text')) {
+      setContent('');
+    }
   };
   
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -516,7 +552,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
               return (
                 <button
                   key={type}
-                  onClick={() => setPostType(type as any)}
+                  onClick={() => handlePostTypeChange(type as any)}
                   className={`p-4 text-center rounded-lg border-2 transition-all ${
                     postType === type
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
