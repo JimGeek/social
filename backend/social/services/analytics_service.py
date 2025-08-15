@@ -21,12 +21,14 @@ class AnalyticsService:
         self.user = user
         self.facebook_service = FacebookAnalyticsService()
         self.instagram_service = InstagramAnalyticsService()
+        self.linkedin_service = LinkedInAnalyticsService()
     
-    def sync_all_analytics(self, user_id: str, days_back: int = 30) -> Dict[str, Any]:
+    def sync_all_analytics(self, user_id: str, days_back: int = 7) -> Dict[str, Any]:
         """Sync analytics for all connected accounts for a user"""
         results = {
             'facebook': {'success': 0, 'failed': 0, 'errors': []},
             'instagram': {'success': 0, 'failed': 0, 'errors': []},
+            'linkedin': {'success': 0, 'failed': 0, 'errors': []},
             'total_posts_updated': 0,
             'sync_timestamp': timezone.now().isoformat()
         }
@@ -52,6 +54,12 @@ class AnalyticsService:
                         sync_result = self.instagram_service.sync_account_analytics(account, days_back)
                         results['instagram']['success'] += sync_result.get('posts_updated', 0)
                     
+                    elif platform_name == 'linkedin':
+                        # LinkedIn analytics temporarily disabled due to API permission requirements
+                        logger.info(f"LinkedIn analytics skipped for {account.account_name} - requires Marketing Developer Platform")
+                        results['linkedin']['success'] += 0
+                        sync_result = {'posts_updated': 0}  # Dummy result for LinkedIn
+                    
                     results['total_posts_updated'] += sync_result.get('posts_updated', 0)
                     
                 except Exception as e:
@@ -70,6 +78,7 @@ class AnalyticsService:
     def get_account_insights(self, account_id: str, date_range: Dict[str, str]) -> Dict[str, Any]:
         """Get comprehensive insights for a specific account"""
         try:
+            from datetime import datetime
             account = SocialAccount.objects.get(id=account_id)
             platform_name = account.platform.name.lower()
             
@@ -77,6 +86,13 @@ class AnalyticsService:
                 return self.facebook_service.get_account_insights(account, date_range)
             elif platform_name == 'instagram':
                 return self.instagram_service.get_account_insights(account, date_range)
+            elif platform_name == 'linkedin':
+                return {
+                    'account_name': account.account_name,
+                    'platform': 'LinkedIn',
+                    'message': 'LinkedIn analytics temporarily disabled - requires Marketing Developer Platform access',
+                    'summary': {'total_posts': 0, 'total_impressions': 0, 'total_reach': 0, 'total_engagement': 0}
+                }
             else:
                 return {'error': f'Analytics not supported for platform: {platform_name}'}
                 
@@ -93,7 +109,7 @@ class FacebookAnalyticsService:
     def __init__(self):
         self.base_url = "https://graph.facebook.com/v18.0"
     
-    def sync_account_analytics(self, account: SocialAccount, days_back: int = 30) -> Dict[str, Any]:
+    def sync_account_analytics(self, account: SocialAccount, days_back: int = 7) -> Dict[str, Any]:
         """Sync analytics for a Facebook account"""
         logger.info(f"Syncing Facebook analytics for account: {account.account_name}")
         
@@ -215,8 +231,7 @@ class FacebookAnalyticsService:
                                 content=content,
                                 post_type='image' if post_data.get('type') == 'photo' else 'text',
                                 status='published',
-                                published_at=post_data.get('created_time'),
-                                created_by=system_user
+                                published_at=post_data.get('created_time')
                             )
                             
                             # Create new post target
@@ -697,7 +712,7 @@ class FacebookAnalyticsService:
             logger.error(f"Error getting top posts: {str(e)}")
             return []
     
-    def collect_analytics(self, account: SocialAccount, days_back: int = 30) -> Dict[str, Any]:
+    def collect_analytics(self, account: SocialAccount, days_back: int = 7) -> Dict[str, Any]:
         """Collect comprehensive Facebook analytics data"""
         logger.info(f"Collecting Facebook analytics for account: {account.account_name}")
         
@@ -799,7 +814,7 @@ class InstagramAnalyticsService:
     def __init__(self):
         self.base_url = "https://graph.facebook.com/v18.0"
     
-    def sync_account_analytics(self, account: SocialAccount, days_back: int = 30) -> Dict[str, Any]:
+    def sync_account_analytics(self, account: SocialAccount, days_back: int = 7) -> Dict[str, Any]:
         """Sync analytics for an Instagram Business account"""
         logger.info(f"Syncing Instagram analytics for account: {account.account_name}")
         
@@ -1114,8 +1129,7 @@ class InstagramAnalyticsService:
                                 content=media.get('caption', ''),
                                 post_type='image' if media.get('media_type') == 'IMAGE' else 'video',
                                 status='published',
-                                published_at=media.get('timestamp'),
-                                created_by=system_user
+                                published_at=media.get('timestamp')
                             )
                             
                             # Create new post target
@@ -1370,7 +1384,7 @@ class InstagramAnalyticsService:
             logger.error(f"Error getting top Instagram media: {str(e)}")
             return []
     
-    def collect_analytics(self, account: SocialAccount, days_back: int = 30) -> Dict[str, Any]:
+    def collect_analytics(self, account: SocialAccount, days_back: int = 7) -> Dict[str, Any]:
         """Collect comprehensive Instagram analytics data"""
         logger.info(f"Collecting Instagram analytics for account: {account.account_name}")
         
@@ -1423,3 +1437,419 @@ class InstagramAnalyticsService:
                 'error': str(e),
                 'has_insights_access': False
             }
+
+
+class LinkedInAnalyticsService:
+    """LinkedIn Analytics API service for collecting social media analytics"""
+    
+    def __init__(self):
+        self.base_url = "https://api.linkedin.com/v2"
+        # LinkedIn analytics API headers
+        self.api_headers = {
+            'LinkedIn-Version': '202210',
+            'X-Restli-Protocol-Version': '2.0.0',
+            'Content-Type': 'application/json'
+        }
+    
+    def sync_account_analytics(self, account: SocialAccount, days_back: int = 7) -> Dict[str, Any]:
+        """Sync LinkedIn analytics for an account"""
+        results = {
+            'account_name': account.account_name,
+            'platform': 'LinkedIn',
+            'posts_imported': 0,
+            'posts_updated': 0,
+            'errors': []
+        }
+        
+        try:
+            logger.info(f"Starting LinkedIn analytics sync for account: {account.account_name}")
+            
+            # Import posts from LinkedIn first
+            import_result = self._import_linkedin_posts(account, days_back)
+            results.update(import_result)
+            
+            # Get account insights
+            account_insights = self._get_account_insights(account, days_back)
+            if account_insights:
+                self._update_account_metrics(account, account_insights)
+            
+            # Always update individual post analytics for existing posts, even if API calls failed
+            # This ensures existing posts have analytics records
+            self._update_posts_analytics(account, days_back)
+            
+            logger.info(f"LinkedIn sync complete: {results['posts_imported']} imported, {results['posts_updated']} updated")
+            
+        except Exception as e:
+            error_msg = f"Error syncing LinkedIn analytics: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+        
+        return results
+    
+    def _import_linkedin_posts(self, account: SocialAccount, days_back: int) -> Dict[str, Any]:
+        """Import LinkedIn posts for the account"""
+        from django.utils import timezone as django_timezone
+        from datetime import timedelta
+        
+        results = {
+            'posts_imported': 0,
+            'posts_updated': 0,
+            'errors': []
+        }
+        
+        try:
+            # Get LinkedIn posts/shares
+            since_date = (django_timezone.now() - timedelta(days=days_back)).isoformat()
+            
+            # LinkedIn Share API endpoint for user posts
+            url = f"{self.base_url}/shares"
+            headers = {
+                **self.api_headers,
+                'Authorization': f'Bearer {account.access_token}'
+            }
+            
+            params = {
+                'q': 'owners',
+                'owners': f'urn:li:person:{account.account_id}',
+                'sortBy': 'CREATED',
+                'start': 0,
+                'count': 50  # LinkedIn API limit
+            }
+            
+            response = requests.get(url, headers=headers, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                shares = data.get('elements', [])
+                
+                for share in shares:
+                    try:
+                        share_id = share.get('id')
+                        share_urn = f"urn:li:share:{share_id}"
+                        
+                        # Check if this post already exists
+                        existing_target = SocialPostTarget.objects.filter(
+                            account=account,
+                            platform_post_id=share_id
+                        ).select_related('post').first()
+                        
+                        if existing_target:
+                            # Update existing post
+                            post = existing_target.post
+                            post.content = self._extract_share_text(share)
+                            post.save()
+                            
+                            post_target = existing_target
+                            created = False
+                            target_created = False
+                        else:
+                            # Create new post
+                            post = SocialPost.objects.create(
+                                created_by=account.created_by,
+                                content=self._extract_share_text(share),
+                                post_type='text',  # LinkedIn shares are typically text-based
+                                status='published',
+                                published_at=self._parse_linkedin_date(share.get('created', {}))
+                            )
+                            
+                            # Create new post target
+                            post_target = SocialPostTarget.objects.create(
+                                post=post,
+                                account=account,
+                                platform_post_id=share_id,
+                                status='published',
+                                published_at=self._parse_linkedin_date(share.get('created', {})),
+                                platform_url=f"https://www.linkedin.com/feed/update/{share_urn}"
+                            )
+                            
+                            created = True
+                            target_created = True
+                        
+                        # Create analytics record with basic data
+                        analytics, analytics_created = SocialAnalytics.objects.get_or_create(
+                            post_target=post_target,
+                            defaults={
+                                'impressions': 0,  # Will be updated via insights API
+                                'reach': 0,
+                                'likes': 0,
+                                'comments': 0,
+                                'shares': 0,
+                                'saves': 0,
+                                'video_views': 0,
+                                'platform_metrics': share  # Store the full share data
+                            }
+                        )
+                        
+                        if created:
+                            results['posts_imported'] += 1
+                        else:
+                            results['posts_updated'] += 1
+                            
+                    except Exception as e:
+                        error_msg = f"Error importing LinkedIn share {share.get('id')}: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                
+                logger.info(f"LinkedIn import complete: {results['posts_imported']} imported, {results['posts_updated']} updated")
+                
+            else:
+                error_msg = f"Failed to fetch LinkedIn shares: {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                results['errors'].append(error_msg)
+                
+                # Check if token is revoked and update account status
+                if response.status_code == 401 and 'REVOKED_ACCESS_TOKEN' in response.text:
+                    from django.utils import timezone as django_timezone
+                    from datetime import timedelta
+                    # Set token as expired so UI shows reconnect option
+                    account.token_expires_at = django_timezone.now() - timedelta(days=1)
+                    account.save()
+                    logger.info(f"LinkedIn token revoked for {account.account_name} - updated expiration date")
+                
+        except Exception as e:
+            error_msg = f"Error importing LinkedIn posts: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            
+        return results
+    
+    def _extract_share_text(self, share: Dict) -> str:
+        """Extract text content from LinkedIn share object"""
+        try:
+            # LinkedIn share text can be in different locations
+            text = share.get('text', {}).get('text', '')
+            if not text:
+                # Try alternative text location
+                text = share.get('commentary', '')
+            return text[:2000]  # Limit content length
+        except Exception:
+            return 'LinkedIn post content'
+    
+    def _parse_linkedin_date(self, created_obj: Dict) -> Optional[datetime]:
+        """Parse LinkedIn created timestamp"""
+        try:
+            from django.utils import timezone as django_timezone
+            import pytz
+            timestamp = created_obj.get('time', 0)
+            if timestamp:
+                return datetime.fromtimestamp(timestamp / 1000, tz=pytz.UTC)
+            return django_timezone.now()
+        except Exception:
+            from django.utils import timezone as django_timezone
+            return django_timezone.now()
+    
+    def _get_account_insights(self, account: SocialAccount, days_back: int) -> Dict[str, Any]:
+        """Get LinkedIn account-level insights"""
+        from django.utils import timezone as django_timezone
+        
+        try:
+            # LinkedIn doesn't provide comprehensive account insights like Facebook/Instagram
+            # We'll focus on profile metrics and engagement
+            
+            # Get profile information
+            profile_url = f"{self.base_url}/people/(id:{account.account_id})"
+            headers = {
+                **self.api_headers,
+                'Authorization': f'Bearer {account.access_token}'
+            }
+            
+            params = {
+                'projection': '(id,firstName,lastName,headline,numConnections,numConnectionsDisplay)'
+            }
+            
+            response = requests.get(profile_url, headers=headers, params=params)
+            
+            if response.status_code == 200:
+                profile_data = response.json()
+                
+                return {
+                    'profile_id': profile_data.get('id'),
+                    'name': f"{profile_data.get('firstName', {}).get('localized', {}).get('en_US', '')} {profile_data.get('lastName', {}).get('localized', {}).get('en_US', '')}",
+                    'headline': profile_data.get('headline', {}).get('localized', {}).get('en_US', ''),
+                    'connections': profile_data.get('numConnections', 0),
+                    'connections_display': profile_data.get('numConnectionsDisplay', ''),
+                    'data_collected_at': django_timezone.now().isoformat()
+                }
+            else:
+                logger.warning(f"LinkedIn profile API error: {response.status_code}")
+                
+                # Check if token is revoked and update account status
+                if response.status_code == 401:
+                    from django.utils import timezone as django_timezone
+                    from datetime import timedelta
+                    # Set token as expired so UI shows reconnect option
+                    account.token_expires_at = django_timezone.now() - timedelta(days=1)
+                    account.save()
+                    logger.info(f"LinkedIn token invalid for {account.account_name} - updated expiration date")
+                
+                return {}
+                
+        except Exception as e:
+            logger.error(f"Error getting LinkedIn account insights: {str(e)}")
+            return {}
+    
+    def _update_posts_analytics(self, account: SocialAccount, days_back: int):
+        """Update LinkedIn post analytics with available metrics"""
+        from django.utils import timezone as django_timezone
+        from datetime import timedelta
+        
+        try:
+            # Get recent posts for this account
+            since_date = django_timezone.now() - timedelta(days=days_back)
+            post_targets = SocialPostTarget.objects.filter(
+                account=account,
+                post__published_at__gte=since_date
+            ).select_related('post')
+            
+            for post_target in post_targets:
+                try:
+                    # For now, LinkedIn doesn't provide detailed post analytics via public API
+                    # We'll update with basic engagement data if available
+                    analytics, created = SocialAnalytics.objects.get_or_create(
+                        post_target=post_target,
+                        defaults={
+                            'impressions': 0,
+                            'reach': 0,
+                            'likes': 0,
+                            'comments': 0,
+                            'shares': 0,
+                            'saves': 0,
+                            'video_views': 0,
+                            'platform_metrics': {'note': 'LinkedIn analytics require enterprise API access'}
+                        }
+                    )
+                    
+                    if not created:
+                        # Update with any available metrics
+                        analytics.platform_metrics = {
+                            **analytics.platform_metrics,
+                            'last_updated': django_timezone.now().isoformat(),
+                            'note': 'LinkedIn analytics require enterprise API access'
+                        }
+                        analytics.save()
+                        
+                except Exception as e:
+                    logger.error(f"Error updating LinkedIn post analytics for {post_target.platform_post_id}: {str(e)}")
+                    
+        except Exception as e:
+            logger.error(f"Error updating LinkedIn posts analytics: {str(e)}")
+    
+    def _update_account_metrics(self, account: SocialAccount, account_insights: Dict):
+        """Update account with LinkedIn-level metrics"""
+        from django.utils import timezone as django_timezone
+        
+        try:
+            # Store account insights in account's permissions field
+            account.permissions = account_insights
+            account.last_sync = django_timezone.now()
+            account.save()
+            
+            logger.debug(f"Updated LinkedIn account metrics for {account.account_name}")
+            
+        except Exception as e:
+            logger.error(f"Error updating LinkedIn account metrics: {str(e)}")
+    
+    def collect_analytics(self, account: SocialAccount, days_back: int = 7) -> Dict[str, Any]:
+        """Collect comprehensive LinkedIn analytics data directly from API"""
+        logger.info(f"Collecting LinkedIn analytics for account: {account.account_name}")
+        
+        try:
+            # First, import/sync LinkedIn posts from API to ensure we have current data
+            import_result = self._import_linkedin_posts(account, days_back)
+            logger.info(f"LinkedIn sync result: {import_result['posts_imported']} imported, {import_result['posts_updated']} updated")
+            
+            # Get account insights
+            account_insights = self._get_account_insights(account, days_back)
+            
+            # Get posts performance summary (this will now include API-synced posts)
+            from django.utils import timezone as django_timezone
+            from datetime import timedelta
+            date_range = {
+                'start_date': (django_timezone.now() - timedelta(days=days_back)).strftime('%Y-%m-%d'),
+                'end_date': django_timezone.now().strftime('%Y-%m-%d')
+            }
+            posts_summary = self._get_posts_performance_summary(account, date_range)
+            
+            return {
+                'account_name': account.account_name,
+                'platform': 'LinkedIn',
+                'account_insights': account_insights,
+                'posts_performance': posts_summary,
+                'date_range': date_range,
+                'sync_result': import_result,
+                'summary': {
+                    'total_posts': posts_summary.get('total_posts', 0),
+                    'total_impressions': posts_summary.get('total_impressions', 0),
+                    'total_reach': posts_summary.get('total_reach', 0),
+                    'total_engagement': posts_summary.get('total_engagement', 0),
+                    'avg_engagement_rate': posts_summary.get('avg_engagement_rate', 0)
+                },
+                'note': 'LinkedIn analytics fetched directly from API'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error collecting LinkedIn analytics for {account.account_name}: {str(e)}")
+            return {
+                'account_name': account.account_name,
+                'platform': 'LinkedIn',
+                'error': str(e),
+                'has_insights_access': False
+            }
+    
+    def _get_posts_performance_summary(self, account: SocialAccount, date_range: Dict[str, str]) -> Dict[str, Any]:
+        """Get summary of LinkedIn posts performance for date range"""
+        try:
+            start_date = datetime.strptime(date_range['start_date'], '%Y-%m-%d').date()
+            end_date = datetime.strptime(date_range['end_date'], '%Y-%m-%d').date()
+            
+            # Get analytics for posts in date range
+            analytics = SocialAnalytics.objects.filter(
+                post_target__account=account,
+                post_target__post__published_at__date__gte=start_date,
+                post_target__post__published_at__date__lte=end_date
+            )
+            
+            if not analytics.exists():
+                return {'message': 'No LinkedIn posts data available for this date range'}
+            
+            # Calculate aggregated metrics
+            total_posts = analytics.count()
+            total_impressions = sum(a.impressions for a in analytics)
+            total_reach = sum(a.reach for a in analytics)
+            total_engagement = sum(a.likes + a.comments + a.shares for a in analytics)
+            
+            return {
+                'total_posts': total_posts,
+                'total_impressions': total_impressions,
+                'total_reach': total_reach,
+                'total_engagement': total_engagement,
+                'avg_engagement_rate': 0.0,  # LinkedIn doesn't provide this via basic API
+                'top_performing_posts': self._get_top_posts(analytics, limit=5)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting LinkedIn posts performance summary: {str(e)}")
+            return {'error': str(e)}
+    
+    def _get_top_posts(self, analytics_queryset, limit: int = 5) -> List[Dict]:
+        """Get top performing LinkedIn posts by engagement"""
+        try:
+            top_posts = []
+            
+            for analytics in analytics_queryset.order_by('-likes', '-comments', '-shares')[:limit]:
+                post = analytics.post_target.post
+                top_posts.append({
+                    'post_id': str(post.id),
+                    'content': post.content[:100] + '...' if len(post.content) > 100 else post.content,
+                    'published_at': post.published_at.isoformat() if post.published_at else None,
+                    'likes': analytics.likes,
+                    'comments': analytics.comments,
+                    'shares': analytics.shares,
+                    'impressions': analytics.impressions
+                })
+            
+            return top_posts
+            
+        except Exception as e:
+            logger.error(f"Error getting top LinkedIn posts: {str(e)}")
+            return []

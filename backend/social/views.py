@@ -2628,6 +2628,7 @@ class AnalyticsSummaryView(APIView):
         """Get analytics summary for user"""
         try:
             from django.db.models import Sum, Avg, Count
+            from django.utils import timezone
             import logging
             
             logger = logging.getLogger(__name__)
@@ -2637,28 +2638,40 @@ class AnalyticsSummaryView(APIView):
             logger.info(f"User: {user.username}")
             
             # Get date range from query params (default to last 30 days)
-            days_back = int(request.GET.get('days', 30))
+            days_back = int(request.GET.get('days', 7))
             start_date = request.GET.get('start_date')
             end_date = request.GET.get('end_date')
+            platform_filter = request.GET.get('platform', 'all')
             
             if start_date and end_date:
                 try:
-                    since_date = datetime.strptime(start_date, '%Y-%m-%d')
-                    until_date = datetime.strptime(end_date, '%Y-%m-%d')
+                    since_date = timezone.make_aware(datetime.strptime(start_date, '%Y-%m-%d'))
+                    # Make end_date include the entire day (until 23:59:59)
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1) - timedelta(microseconds=1)
+                    until_date = timezone.make_aware(end_dt)
                 except ValueError:
                     return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
             else:
-                since_date = datetime.now() - timedelta(days=days_back)
-                until_date = datetime.now()
+                since_date = timezone.now() - timedelta(days=days_back)
+                until_date = timezone.now()
             
             logger.info(f"Date range: {since_date} to {until_date}")
             
-            # Get overview metrics from database
+            # Get overview metrics from database (exclude LinkedIn)
             analytics_qs = SocialAnalytics.objects.filter(
                 post_target__account__created_by=user,
                 post_target__post__published_at__gte=since_date,
                 post_target__post__published_at__lte=until_date
+            ).exclude(
+                post_target__account__platform__name__iexact='linkedin'
             )
+            
+            # Apply platform filter if specified
+            if platform_filter and platform_filter.lower() != 'all':
+                analytics_qs = analytics_qs.filter(
+                    post_target__account__platform__name__iexact=platform_filter
+                )
+                logger.info(f"Applied platform filter: {platform_filter}")
             
             logger.info(f"Found {analytics_qs.count()} analytics records")
             
@@ -2682,31 +2695,49 @@ class AnalyticsSummaryView(APIView):
                 total_engagement = overview['total_likes'] + overview['total_comments'] + overview['total_shares']
                 overview['avg_engagement_rate'] = round((total_engagement / overview['total_reach']) * 100, 2)
             
-            # Get platform breakdown
+            # Get platform breakdown - aggregate across all accounts per platform (exclude LinkedIn)
             platforms = {}
             accounts = SocialAccount.objects.filter(
                 created_by=user,
                 status='connected'
-            ).select_related('platform')
+            ).select_related('platform').exclude(
+                platform__name__iexact='linkedin'
+            )
             
+            # Apply platform filter to accounts if specified
+            if platform_filter and platform_filter.lower() != 'all':
+                accounts = accounts.filter(platform__name__iexact=platform_filter)
+            
+            # Group accounts by platform
+            platform_accounts = {}
             for account in accounts:
                 platform_name = account.platform.name.lower()
-                platform_analytics = analytics_qs.filter(post_target__account=account)
+                if platform_name not in platform_accounts:
+                    platform_accounts[platform_name] = []
+                platform_accounts[platform_name].append(account)
+            
+            # Aggregate analytics for each platform
+            for platform_name, platform_account_list in platform_accounts.items():
+                platform_analytics = analytics_qs.filter(post_target__account__in=platform_account_list)
+                
+                # Get the most recently synced account for this platform as representative
+                representative_account = max(platform_account_list, 
+                                          key=lambda acc: acc.last_sync or timezone.datetime.min.replace(tzinfo=timezone.utc))
                 
                 platforms[platform_name] = {
-                    'account_name': account.account_name,
+                    'account_name': representative_account.account_name,
                     'posts': platform_analytics.count(),
                     'impressions': platform_analytics.aggregate(Sum('impressions'))['impressions__sum'] or 0,
                     'reach': platform_analytics.aggregate(Sum('reach'))['reach__sum'] or 0,
                     'engagement': (platform_analytics.aggregate(Sum('likes'))['likes__sum'] or 0) + 
                                  (platform_analytics.aggregate(Sum('comments'))['comments__sum'] or 0) + 
                                  (platform_analytics.aggregate(Sum('shares'))['shares__sum'] or 0),
-                    'last_sync': account.last_sync.isoformat() if account.last_sync else None
+                    'last_sync': representative_account.last_sync.isoformat() if representative_account.last_sync else None
                 }
             
             # Get recent activity (last 7 days of posts)
             recent_posts = analytics_qs.filter(
-                post_target__post__published_at__gte=datetime.now() - timedelta(days=7)
+                post_target__post__published_at__gte=timezone.now() - timedelta(days=7)
             ).select_related(
                 'post_target__post', 
                 'post_target__account__platform'
@@ -2715,10 +2746,12 @@ class AnalyticsSummaryView(APIView):
             recent_activity = []
             for analytics in recent_posts:
                 post = analytics.post_target.post
+                platform = analytics.post_target.account.platform
                 recent_activity.append({
                     'post_id': str(post.id),
                     'content': post.content[:100] + '...' if len(post.content) > 100 else post.content,
-                    'platform': analytics.post_target.account.platform.display_name,
+                    'platform': platform.display_name,
+                    'platform_name': platform.name.lower(),  # Add platform_name field
                     'published_at': post.published_at.isoformat() if post.published_at else None,
                     'impressions': analytics.impressions,
                     'likes': analytics.likes,
@@ -2741,8 +2774,8 @@ class AnalyticsSummaryView(APIView):
                 })
             
             return Response({
-                'overview': overview,
-                'platforms': platforms,
+                'overview': overview,  # Nest under overview to match frontend expectations
+                'platform_breakdown': platforms,
                 'recent_activity': recent_activity,
                 'connected_accounts': connected_accounts,
                 'sync_info': {
@@ -2774,9 +2807,9 @@ class PlatformAnalyticsView(APIView):
             end_date = request.GET.get('end_date')
             
             if not start_date or not end_date:
-                # Default to last 30 days
+                # Default to last 7 days
                 end_date = datetime.now().strftime('%Y-%m-%d')
-                start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+                start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
             
             date_range = {
                 'start_date': start_date,
@@ -2865,14 +2898,45 @@ class PlatformAnalyticsView(APIView):
                             'last_sync': account.last_sync.isoformat() if account.last_sync else None
                         }
                     
-                    # Add to platform summary
-                    platform_data['summary']['total_followers'] += account_data['followers']
-                    platform_data['summary']['total_posts'] += account_data['posts']
-                    platform_data['summary']['total_impressions'] += account_data['impressions']
-                    platform_data['summary']['total_reach'] += account_data['reach']
-                    platform_data['summary']['total_engagement'] += account_data['engagement']
+                    elif platform.lower() == 'linkedin':
+                        account_insights_data = account_insights.get('account_insights', {})
+                        posts_performance = account_insights.get('posts_performance', {})
+                        
+                        account_data = {
+                            'id': str(account.id),
+                            'name': account.account_name,
+                            'username': account.account_username,
+                            'connections': account_insights_data.get('connections', 0),
+                            'posts': posts_performance.get('total_posts', 0),
+                            'impressions': posts_performance.get('total_impressions', 0),
+                            'reach': posts_performance.get('total_reach', 0),
+                            'engagement': posts_performance.get('total_engagement', 0),
+                            'engagement_rate': posts_performance.get('avg_engagement_rate', 0),
+                            'headline': account_insights_data.get('headline', ''),
+                            'top_posts': posts_performance.get('top_performing_posts', []),
+                            'last_sync': account.last_sync.isoformat() if account.last_sync else None,
+                            'note': 'LinkedIn analytics require Marketing Developer Platform access'
+                        }
                     
-                    if account_data['engagement_rate'] > 0:
+                    else:
+                        # Platform not supported
+                        account_data = {
+                            'id': str(account.id),
+                            'name': account.account_name,
+                            'username': account.account_username,
+                            'error': f'Analytics not supported for platform: {platform}',
+                            'last_sync': account.last_sync.isoformat() if account.last_sync else None
+                        }
+                    
+                    # Add to platform summary
+                    followers_count = account_data.get('followers', 0) or account_data.get('connections', 0)
+                    platform_data['summary']['total_followers'] += followers_count
+                    platform_data['summary']['total_posts'] += account_data.get('posts', 0)
+                    platform_data['summary']['total_impressions'] += account_data.get('impressions', 0)
+                    platform_data['summary']['total_reach'] += account_data.get('reach', 0)
+                    platform_data['summary']['total_engagement'] += account_data.get('engagement', 0)
+                    
+                    if account_data.get('engagement_rate', 0) > 0:
                         total_engagement_rates.append(account_data['engagement_rate'])
                     
                     platform_data['accounts'].append(account_data)
@@ -2915,7 +2979,7 @@ class SyncAnalyticsView(APIView):
             # Get days_back parameter (default 30 days) - handle both DRF and Django requests
             try:
                 if hasattr(request, 'data') and request.data:
-                    days_back = int(request.data.get('days_back', 30))
+                    days_back = int(request.data.get('days_back', 7))
                     account_id = request.data.get('account_id')
                 elif request.body:
                     body_data = json.loads(request.body.decode('utf-8'))
@@ -2925,7 +2989,7 @@ class SyncAnalyticsView(APIView):
                     days_back = int(request.POST.get('days_back', 30))
                     account_id = request.POST.get('account_id')
             except (ValueError, json.JSONDecodeError):
-                days_back = 30
+                days_back = 7
                 account_id = None
             
             analytics_service = AnalyticsService()
@@ -2972,14 +3036,14 @@ class ExportAnalyticsView(APIView):
             # Get export parameters (support both GET query params and POST data)
             if request.method == 'GET':
                 export_format = request.GET.get('format', 'csv')
-                days_back = int(request.GET.get('days', 30))
+                days_back = int(request.GET.get('days', 7))
                 platforms = request.GET.getlist('platforms') if 'platforms' in request.GET else []
                 start_date = request.GET.get('start_date')
                 end_date = request.GET.get('end_date')
                 platform = request.GET.get('platform')  # Single platform filter
             else:
                 export_format = request.data.get('format', 'csv')
-                days_back = int(request.data.get('days', 30))
+                days_back = int(request.data.get('days', 7))
                 platforms = request.data.get('platforms', [])
                 start_date = request.data.get('start_date')
                 end_date = request.data.get('end_date')
@@ -3244,7 +3308,7 @@ class LiveDataCollectionView(APIView):
             user = request.user
             
             # Get parameters
-            days_back = int(request.data.get('days_back', 30))
+            days_back = int(request.data.get('days_back', 7))
             if days_back > 90:  # Limit to 90 days for performance
                 days_back = 90
             
@@ -3466,7 +3530,7 @@ class PostPerformanceView(APIView):
             if start_date:
                 start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
             else:
-                start_date = timezone.now().date() - timedelta(days=30)
+                start_date = timezone.now().date() - timedelta(days=7)
                 
             if end_date:
                 end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
@@ -3660,7 +3724,7 @@ class EngagementAnalysisView(APIView):
     def get(self, request):
         try:
             # Get parameters
-            days_back = int(request.GET.get('days', 30))
+            days_back = int(request.GET.get('days', 7))
             platform = request.GET.get('platform', 'all')
             
             end_date = timezone.now()
@@ -3858,12 +3922,13 @@ class AutoSyncView(APIView):
                 'errors': []
             }
             
-            # Get all connected accounts
+            # Get limited connected accounts for faster sync
+            # Process only 3 most recently active accounts to avoid timeout
             accounts = SocialAccount.objects.filter(
                 created_by=request.user,
                 status='connected',
                 is_active=True
-            )
+            ).order_by('-last_sync')[:3]
             
             for account in accounts:
                 try:
@@ -3874,8 +3939,8 @@ class AutoSyncView(APIView):
                         import_result = instagram_service.import_instagram_posts(account, limit=20)
                         results['posts_imported'] += import_result.get('posts_imported', 0)
                         
-                        # Update analytics
-                        analytics_result = instagram_service.collect_analytics(account, days_back=30)
+                        # Update analytics (reduced to 7 days for faster sync)
+                        analytics_result = instagram_service.collect_analytics(account, days_back=7)
                         if analytics_result.get('summary'):
                             results['analytics_updated'] += 1
                             
@@ -3884,8 +3949,8 @@ class AutoSyncView(APIView):
                         if not import_result.get('error'):
                             results['posts_imported'] += import_result.get('posts_imported', 0)
                         
-                        # Update analytics
-                        analytics_result = facebook_service.collect_analytics(account, days_back=30)
+                        # Update analytics (reduced to 7 days for faster sync)
+                        analytics_result = facebook_service.collect_analytics(account, days_back=7)
                         if analytics_result.get('summary'):
                             results['analytics_updated'] += 1
                 

@@ -477,12 +477,24 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
 
                       <div className="flex items-center space-x-2">
                         {account.is_token_expired && (
-                          <button
-                            onClick={() => handleRefreshToken(account.id)}
-                            className="px-3 py-1 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                          >
-                            Refresh Token
-                          </button>
+                          <>
+                            {account.platform.name === 'linkedin' ? (
+                              <button
+                                onClick={() => handleLinkedInConnect()}
+                                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                disabled={isConnecting === 'linkedin'}
+                              >
+                                {isConnecting === 'linkedin' ? 'Reconnecting...' : 'Reconnect LinkedIn'}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleRefreshToken(account.id)}
+                                className="px-3 py-1 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                              >
+                                Refresh Token
+                              </button>
+                            )}
+                          </>
                         )}
                         <button
                           onClick={() => handleDisconnect(account.id)}
