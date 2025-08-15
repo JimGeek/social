@@ -59,7 +59,8 @@ def run_command(command, cwd=None):
             cwd=cwd,
             capture_output=True,
             text=True,
-            timeout=300  # 5 minute timeout
+            timeout=300,  # 5 minute timeout
+            executable='/bin/bash'  # Use bash instead of sh for source command
         )
         
         if result.returncode == 0:
