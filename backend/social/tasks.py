@@ -329,18 +329,40 @@ def publish_to_facebook(post: SocialPost, account: SocialAccount, target: Social
 
 def publish_to_instagram(post: SocialPost, account: SocialAccount, target: SocialPostTarget) -> tuple:
     """
-    Publish post to Instagram
+    Publish post to Instagram using Instagram Graph API 2025
     Returns: (success, platform_post_id, platform_url, error_message)
+    
+    Note: Instagram Graph API 2025 requires images/videos - text-only posts are not supported
     """
     try:
-        # Instagram publishing logic would go here
-        # For now, return mock success
-        return (
-            True,
-            f"instagram_mock_{post.id}",
-            f"https://instagram.com/p/mock_{post.id}",
-            None
+        from .services.instagram_service import InstagramService
+        
+        instagram_service = InstagramService()
+        
+        # Prepare content
+        content = target.content_override or post.content
+        if post.hashtags:
+            hashtags = target.hashtags_override or post.hashtags
+            content += '\n\n' + ' '.join([f'#{tag}' for tag in hashtags])
+        
+        # Publish post
+        result = instagram_service.publish_post(
+            account=account,
+            content=content,
+            media_urls=post.media_files or [],
+            first_comment=post.first_comment
         )
+        
+        if result.get('success'):
+            return (
+                True,
+                result.get('post_id'),
+                result.get('post_url'),
+                None
+            )
+        else:
+            return (False, None, None, result.get('error'))
+            
     except Exception as e:
         return (False, None, None, str(e))
 
@@ -373,10 +395,27 @@ def sync_facebook_comments(account: SocialAccount):
 
 def sync_instagram_comments(account: SocialAccount):
     """
-    Sync comments from Instagram
+    Sync comments from Instagram using Instagram Graph API 2025
     """
-    # Instagram comment sync logic would go here
-    logger.info(f"Instagram comment sync not yet implemented for {account.account_name}")
+    try:
+        from .services.instagram_service import InstagramService
+        
+        instagram_service = InstagramService()
+        
+        # Get account info to verify access
+        account_info = instagram_service.get_account_info(account)
+        
+        if not account_info.get('success'):
+            logger.error(f"Cannot access Instagram account {account.account_name}: {account_info.get('error')}")
+            return
+        
+        # TODO: Implement comment fetching when needed
+        # Instagram Graph API provides comments endpoint: /{media-id}/comments
+        # For now, just log that the account is accessible
+        logger.info(f"Instagram account {account.account_name} is accessible - comment sync to be implemented")
+        
+    except Exception as e:
+        logger.error(f"Error syncing Instagram comments for {account.account_name}: {str(e)}")
 
 def analyze_facebook_post_performance(post: SocialPost, target: SocialPostTarget):
     """
@@ -411,10 +450,51 @@ def analyze_facebook_post_performance(post: SocialPost, target: SocialPostTarget
 
 def analyze_instagram_post_performance(post: SocialPost, target: SocialPostTarget):
     """
-    Analyze Instagram post performance
+    Analyze Instagram post performance using Instagram Graph API 2025
     """
-    # Instagram analytics logic would go here
-    create_mock_analytics(post, target)
+    try:
+        from .services.instagram_service import InstagramService
+        
+        instagram_service = InstagramService()
+        
+        if target.platform_post_id and target.platform_post_id != f"instagram_mock_{post.id}":
+            # Get real insights from Instagram
+            insights_result = instagram_service.get_media_insights(
+                target.account, 
+                target.platform_post_id
+            )
+            
+            if insights_result.get('success'):
+                insights = insights_result.get('insights', {})
+                
+                # Create or update analytics with real data
+                SocialAnalytics.objects.update_or_create(
+                    post_target=target,
+                    defaults={
+                        'reach': insights.get('reach', 0),
+                        'impressions': insights.get('impressions', 0),
+                        'engagement': insights.get('engagement', 0),
+                        'clicks': insights.get('clicks', 0),
+                        'shares': insights.get('shares', 0),
+                        'comments_count': insights.get('comments', 0),
+                        'likes_count': insights.get('likes', 0),
+                        'raw_data': insights
+                    }
+                )
+                
+                logger.info(f"Updated analytics for Instagram post {target.platform_post_id}")
+            else:
+                logger.warning(f"Failed to get Instagram insights: {insights_result.get('error')}")
+                # Fall back to mock analytics
+                create_mock_analytics(post, target)
+        else:
+            # For mock posts or posts without real platform_post_id
+            create_mock_analytics(post, target)
+            
+    except Exception as e:
+        logger.error(f"Error analyzing Instagram post performance: {str(e)}")
+        # Fall back to mock analytics on error
+        create_mock_analytics(post, target)
 
 def create_mock_analytics(post: SocialPost, target: SocialPostTarget):
     """

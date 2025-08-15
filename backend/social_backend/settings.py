@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "django_extensions",
+    "django_celery_beat",
     
     # Local apps
     "social",
@@ -80,24 +81,17 @@ WSGI_APPLICATION = "social_backend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# Database - PostgreSQL for both development and production
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config('DB_NAME', default='social_db'),
+        "USER": config('DB_USER', default='social_user'),
+        "PASSWORD": config('DB_PASSWORD', default=''),
+        "HOST": config('DB_HOST', default='localhost'),
+        "PORT": config('DB_PORT', default='5432'),
     }
 }
-
-# PostgreSQL configuration for production
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": config('DB_NAME', default='social_db'),
-#         "USER": config('DB_USER', default='social_user'),
-#         "PASSWORD": config('DB_PASSWORD', default=''),
-#         "HOST": config('DB_HOST', default='localhost'),
-#         "PORT": config('DB_PORT', default='5432'),
-#     }
-# }
 
 
 # Password validation
