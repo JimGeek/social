@@ -443,3 +443,57 @@ class InstagramService:
                 'insights': {},
                 'error': str(e)
             }
+    
+    def get_supported_post_types(self, account: SocialAccount) -> List[Dict[str, Any]]:
+        """Get supported post types for Instagram account"""
+        # Instagram supports these post types via Graph API
+        supported_types = [
+            {
+                'type': 'image',
+                'display_name': 'Photo',
+                'description': 'Single photo post',
+                'max_files': 1,
+                'supported_formats': ['jpg', 'jpeg', 'png'],
+                'max_file_size_mb': 8,
+                'requires_media': True
+            },
+            {
+                'type': 'video',
+                'display_name': 'Video',
+                'description': 'Single video post',
+                'max_files': 1,
+                'supported_formats': ['mp4', 'mov'],
+                'max_file_size_mb': 100,
+                'max_duration_seconds': 60,
+                'requires_media': True
+            },
+            {
+                'type': 'carousel',
+                'display_name': 'Carousel',
+                'description': 'Multiple photos or videos',
+                'max_files': 10,
+                'supported_formats': ['jpg', 'jpeg', 'png', 'mp4', 'mov'],
+                'max_file_size_mb': 100,
+                'requires_media': True
+            }
+        ]
+        
+        # Check account type for additional capabilities
+        account_info = self.get_account_info(account)
+        if account_info.get('success') and account_info.get('data'):
+            account_type = account_info['data'].get('account_type')
+            
+            # Business accounts might have additional post types
+            if account_type in ['BUSINESS', 'CREATOR']:
+                supported_types.append({
+                    'type': 'story',
+                    'display_name': 'Story',
+                    'description': 'Instagram Story (24h)',
+                    'max_files': 1,
+                    'supported_formats': ['jpg', 'jpeg', 'png', 'mp4', 'mov'],
+                    'max_file_size_mb': 100,
+                    'max_duration_seconds': 15,
+                    'requires_media': True
+                })
+        
+        return supported_types
