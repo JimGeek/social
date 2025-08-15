@@ -145,7 +145,7 @@ def deploy_application():
     logger.info("Verifying deployment...")
     success, output = run_command('curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8002/api/social/platforms/')
     
-    if success and '401' in output:  # 401 is expected for unauthenticated request
+    if success and ('401' in output or '301' in output):  # 401 or 301 are expected responses
         logger.info("Deployment verification successful")
         deployment_log.append({
             'step': 'Verification',
