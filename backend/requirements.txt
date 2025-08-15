@@ -5,16 +5,16 @@ django-cors-headers==4.6.0
 django-extensions==3.2.3
 
 # Database
-psycopg2-binary==2.9.12
+psycopg2-binary==2.9.10
 
 # Celery & Redis
-celery==5.3.10
+celery==5.3.6
 redis==5.2.0
 django-celery-beat==2.8.0
 
 # API & Authentication
 requests==2.32.3
-python-decouple==3.9
+python-decouple==3.8
 
 # AI & Social Media APIs
 openai==1.58.1
