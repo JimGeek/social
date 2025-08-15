@@ -15,6 +15,9 @@ router.register(r'queues', views.SocialQueueViewSet)
 router.register(r'media-files', views.SocialMediaFileViewSet)
 
 urlpatterns = [
+    # Platform capabilities (must come before router.urls to avoid conflict)
+    path('platforms/capabilities/', views.PlatformCapabilitiesView.as_view(), name='platform-capabilities'),
+    
     path('', include(router.urls)),
     
     # User authentication endpoints
@@ -69,8 +72,6 @@ urlpatterns = [
     path('media/validate/', views.MediaValidationView.as_view(), name='media-validate'),
     path('media/analyze/', views.MediaAnalysisView.as_view(), name='media-analyze'),
     
-    # Platform capabilities
-    path('platforms/capabilities/', views.PlatformCapabilitiesView.as_view(), name='platform-capabilities'),
     
     # Live data collection endpoints
     path('live-data/collect/', views.LiveDataCollectionView.as_view(), name='live-data-collect'),
