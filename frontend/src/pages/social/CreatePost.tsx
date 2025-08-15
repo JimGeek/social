@@ -33,11 +33,11 @@ const CreatePost: React.FC<CreatePostProps> = () => {
   // State management
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
-  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<string>('');
   
   // Post content state
   const [content, setContent] = useState('');
-  const [postType, setPostType] = useState<'text' | 'image' | 'video' | 'carousel' | 'story' | 'reel'>('image');
+  const [postType, setPostType] = useState<'text' | 'image' | 'video' | 'carousel' | 'story' | 'reel' | ''>('');
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [firstComment, setFirstComment] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
@@ -74,33 +74,10 @@ const CreatePost: React.FC<CreatePostProps> = () => {
     setCharacterCount(content.length);
   }, [content]);
   
-  // Validate post when content or accounts change
+  // Validate post when content or account change
   useEffect(() => {
     validatePost();
-  }, [content, mediaFiles, selectedAccounts, postType]);
-  
-  // Clear form when account selection changes significantly
-  useEffect(() => {
-    // Only clear if we're switching between different platform types
-    const currentPlatforms = selectedAccounts
-      .map(id => accounts.find(acc => acc.id === id)?.platform.name)
-      .filter((name): name is string => Boolean(name));
-    
-    const uniquePlatforms = Array.from(new Set(currentPlatforms));
-    
-    // If platforms changed, clear media files as different platforms have different requirements
-    if (uniquePlatforms.length > 0) {
-      // Clear media files when switching between platforms with different capabilities
-      const needsClear = uniquePlatforms.some(platform => {
-        const prevPlatforms = mediaFiles.length > 0 ? ['instagram'] : []; // Default assumption
-        return !prevPlatforms.includes(platform);
-      });
-      
-      if (needsClear) {
-        setMediaFiles([]);
-      }
-    }
-  }, [selectedAccounts, accounts]);
+  }, [content, mediaFiles, selectedAccount, postType]);
   
   const loadInitialData = async () => {
     try {
@@ -157,23 +134,20 @@ const CreatePost: React.FC<CreatePostProps> = () => {
     const errors: string[] = [];
     const warnings: string[] = [];
     
-    // Get selected platform names
-    const selectedPlatformNames = selectedAccounts.map(id => {
-      const account = accounts.find(acc => acc.id === id);
-      return account?.platform.name;
-    }).filter((name): name is string => Boolean(name));
+    if (!selectedAccount) return;
+    
+    // Get selected platform name
+    const account = accounts.find(acc => acc.id === selectedAccount);
+    const platformName = account?.platform.name;
     
     // Check Instagram requirements
-    if (selectedPlatformNames.includes('instagram')) {
+    if (platformName === 'instagram') {
       if (mediaFiles.length === 0) {
         errors.push('Instagram requires at least one image or video. Text-only posts are not supported.');
       }
       
       // Check post type restrictions
       if (postType === 'story') {
-        const instagramAccounts = selectedAccounts.map(id => accounts.find(acc => acc.id === id))
-          .filter(acc => acc?.platform.name === 'instagram');
-        
         // Would need to check account type via API call
         warnings.push('Stories are only available for Instagram Business accounts.');
       }
@@ -187,36 +161,40 @@ const CreatePost: React.FC<CreatePostProps> = () => {
     }
     
     // Check character limits
-    for (const accountId of selectedAccounts) {
-      const account = accounts.find(acc => acc.id === accountId);
-      if (account && content.length > account.platform.max_text_length) {
-        errors.push(`Content exceeds ${account.platform.display_name} character limit (${account.platform.max_text_length} characters).`);
-      }
+    if (account && content.length > account.platform.max_text_length) {
+      errors.push(`Content exceeds ${account.platform.display_name} character limit (${account.platform.max_text_length} characters).`);
     }
     
     // Check media count limits
-    for (const accountId of selectedAccounts) {
-      const account = accounts.find(acc => acc.id === accountId);
-      if (account && mediaFiles.length > account.platform.max_image_count) {
-        errors.push(`Too many media files for ${account.platform.display_name} (max ${account.platform.max_image_count}).`);
-      }
+    if (account && mediaFiles.length > account.platform.max_image_count) {
+      errors.push(`Too many media files for ${account.platform.display_name} (max ${account.platform.max_image_count}).`);
     }
     
     setValidationErrors(errors);
     setValidationWarnings(warnings);
   };
   
-  const handleAccountToggle = (accountId: string) => {
+  const handleAccountSelection = (accountId: string) => {
     const account = accounts.find(acc => acc.id === accountId);
     if (!account?.posting_enabled) {
       return;
     }
     
-    setSelectedAccounts(prev => 
-      prev.includes(accountId) 
-        ? prev.filter(id => id !== accountId)
-        : [...prev, accountId]
-    );
+    // If clicking the same account, deselect it
+    if (selectedAccount === accountId) {
+      setSelectedAccount('');
+      setPostType('');
+      setMediaFiles([]);
+      setContent('');
+      setFirstComment('');
+    } else {
+      // Select new account and clear form
+      setSelectedAccount(accountId);
+      setPostType('');
+      setMediaFiles([]);
+      setContent('');
+      setFirstComment('');
+    }
   };
   
   const handlePostTypeChange = (newPostType: typeof postType) => {
@@ -257,15 +235,15 @@ const CreatePost: React.FC<CreatePostProps> = () => {
     setIsUploadingMedia(true);
     
     try {
-      // Get the first selected platform name for upload validation
-      const firstPlatformName = selectedAccounts.length > 0 
-        ? accounts.find(acc => acc.id === selectedAccounts[0])?.platform.name || 'instagram'
+      // Get selected platform name for upload validation
+      const platformName = selectedAccount 
+        ? accounts.find(acc => acc.id === selectedAccount)?.platform.name || 'instagram'
         : 'instagram';
         
       const uploadPromises = files.map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('platform', firstPlatformName);
+        formData.append('platform', platformName);
         formData.append('post_type', postType);
         
         const response = await fetch('/api/social/media/upload/', {
@@ -345,17 +323,15 @@ const CreatePost: React.FC<CreatePostProps> = () => {
   };
   
   const handlePublish = async (publishNow: boolean = true) => {
-    if (selectedAccounts.length === 0 || validationErrors.length > 0) {
+    if (!selectedAccount || validationErrors.length > 0 || !postType) {
       return;
     }
     
     // Instagram requires media
-    const hasInstagram = selectedAccounts.some(id => {
-      const account = accounts.find(acc => acc.id === id);
-      return account?.platform.name === 'instagram';
-    });
+    const account = accounts.find(acc => acc.id === selectedAccount);
+    const isInstagram = account?.platform.name === 'instagram';
     
-    if (hasInstagram && mediaFiles.length === 0) {
+    if (isInstagram && mediaFiles.length === 0) {
       alert('Instagram requires at least one image or video.');
       return;
     }
@@ -365,24 +341,24 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       // Create the post
       const postData = {
         content,
-        post_type: postType,
+        post_type: postType as 'text' | 'image' | 'video' | 'carousel' | 'story' | 'reel',
         hashtags,
         first_comment: firstComment,
         media_files: mediaFiles.map(file => file.file_url),
-        target_accounts: selectedAccounts
+        target_accounts: [selectedAccount]
       };
       
       const createdPost = await socialAPI.createPost(postData);
       
       if (publishNow) {
         // Publish immediately
-        await socialAPI.publishPost(createdPost.id, selectedAccounts);
+        await socialAPI.publishPost(createdPost.id, [selectedAccount]);
         alert('Post published successfully!');
       } else if (scheduledAt) {
         // Schedule for later
         const localDateTime = new Date(scheduledAt);
         const utcDateTime = localDateTime.toISOString();
-        await socialAPI.schedulePost(createdPost.id, utcDateTime, selectedAccounts);
+        await socialAPI.schedulePost(createdPost.id, utcDateTime, [selectedAccount]);
         alert('Post scheduled successfully!');
       } else {
         // Save as draft
@@ -394,7 +370,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       setMediaFiles([]);
       setHashtags([]);
       setFirstComment('');
-      setSelectedAccounts([]);
+      setSelectedAccount('');
       setScheduledAt('');
       
     } catch (error) {
@@ -406,54 +382,33 @@ const CreatePost: React.FC<CreatePostProps> = () => {
   };
   
   const getCharacterLimit = () => {
-    if (selectedAccounts.length === 0) return 2000;
+    if (!selectedAccount) return 2000;
     
-    const selectedPlatformNames = selectedAccounts.map(id => {
-      const account = accounts.find(acc => acc.id === id);
-      return account?.platform.name;
-    }).filter((name): name is string => Boolean(name));
-    
-    const limits = selectedPlatformNames.map(platformName => {
-      const platform = platforms.find(p => p.name === platformName);
-      return platform?.max_text_length || 2000;
-    });
-    
-    return Math.min(...limits);
+    const account = accounts.find(acc => acc.id === selectedAccount);
+    return account?.platform.max_text_length || 2000;
   };
   
   const getAvailablePostTypes = () => {
-    if (selectedAccounts.length === 0) return ['text', 'image', 'video', 'carousel'];
+    if (!selectedAccount) return [];
     
-    const selectedPlatformNames = selectedAccounts.map(id => {
-      const account = accounts.find(acc => acc.id === id);
-      return account?.platform.name;
-    }).filter((name): name is string => Boolean(name));
+    const account = accounts.find(acc => acc.id === selectedAccount);
+    if (!account) return [];
     
-    // Base types available for all platforms
-    let availableTypes = ['image', 'video'];
+    const platformName = account.platform.name;
     
-    // Add carousel if supported
-    if (selectedPlatformNames.every(platform => ['instagram', 'facebook', 'linkedin'].includes(platform))) {
-      availableTypes.push('carousel');
-    }
+    // Get supported post types for the selected platform
+    const platformPostTypes: { [key: string]: string[] } = {
+      'facebook': ['text', 'image', 'video', 'carousel'],
+      'instagram': ['image', 'video', 'carousel', 'story', 'reel'],
+      'linkedin': ['text', 'image', 'video'],
+      'twitter': ['text', 'image', 'video'],
+    };
     
-    // Add Instagram-specific types
-    if (selectedPlatformNames.includes('instagram') && selectedPlatformNames.length === 1) {
-      availableTypes.push('story', 'reel');
-    }
-    
-    // Add text posts for non-Instagram platforms
-    if (!selectedPlatformNames.includes('instagram')) {
-      availableTypes.unshift('text');
-    }
-    
-    return availableTypes;
+    return platformPostTypes[platformName] || ['text', 'image'];
   };
   
-  const selectedPlatformNames = selectedAccounts.map(id => {
-    const account = accounts.find(acc => acc.id === id);
-    return account?.platform.name;
-  }).filter((name): name is string => Boolean(name));
+  const selectedAccount_obj = accounts.find(acc => acc.id === selectedAccount);
+  const selectedPlatformName = selectedAccount_obj?.platform.name;
   
   const characterLimit = getCharacterLimit();
   const isOverLimit = characterCount > characterLimit;
@@ -469,7 +424,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       
       {/* Platform Selection */}
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Select Platforms</h2>
+        <h2 className="text-lg font-semibold mb-4">Select Account</h2>
         
         {accounts.length === 0 ? (
           <div className="text-center py-8">
@@ -492,11 +447,11 @@ const CreatePost: React.FC<CreatePostProps> = () => {
             {accounts.map((account) => (
               <div
                 key={account.id}
-                onClick={() => handleAccountToggle(account.id)}
+                onClick={() => handleAccountSelection(account.id)}
                 className={`p-4 border-2 rounded-lg transition-all ${
                   !account.posting_enabled
                     ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-60'
-                    : selectedAccounts.includes(account.id)
+                    : selectedAccount === account.id
                     ? 'border-blue-500 bg-blue-50 cursor-pointer'
                     : 'border-gray-200 hover:border-gray-300 cursor-pointer'
                 }`}
@@ -520,7 +475,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                       </p>
                     )}
                   </div>
-                  {selectedAccounts.includes(account.id) && account.posting_enabled && (
+                  {selectedAccount === account.id && account.posting_enabled && (
                     <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
@@ -533,7 +488,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       </div>
       
       {/* Post Type Selection */}
-      {selectedAccounts.length > 0 && (
+      {selectedAccount && (
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">Content Type</h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -568,7 +523,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
           </div>
           
           {/* Platform-specific notes */}
-          {selectedPlatformNames.includes('instagram') && (
+          {selectedPlatformName === 'instagram' && (
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start space-x-2">
                 <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -589,8 +544,9 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         </div>
       )}
       
-      {/* Media Upload Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+      {/* Media Upload Section - Only show for media posts */}
+      {selectedAccount && ['image', 'video', 'carousel', 'story', 'reel'].includes(postType) && (
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Media Files</h2>
           <span className="text-sm text-gray-500">
@@ -690,6 +646,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
           </div>
         )}
       </div>
+      )}
       
       {/* Validation Alerts */}
       {(validationErrors.length > 0 || validationWarnings.length > 0) && (
@@ -718,10 +675,11 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         </div>
       )}
       
-      {/* Content Composer */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+      {/* Content Composer - Show for all post types */}
+      {selectedAccount && postType && (
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Caption</h2>
+          <h2 className="text-lg font-semibold">{postType === 'text' ? 'Post Content' : 'Caption'}</h2>
           <div className="flex items-center space-x-2">
             <span className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>
               {characterCount}/{characterLimit}
@@ -738,9 +696,12 @@ const CreatePost: React.FC<CreatePostProps> = () => {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder={selectedPlatformNames.includes('instagram') ? 
-              "Write a caption for your post..." : 
-              "What's on your mind?"
+            placeholder={postType === 'text' ? 
+              (selectedPlatformName === 'instagram' ? 
+                "What's on your mind?" : 
+                "What's on your mind?"
+              ) : 
+              "Write a caption for your post..."
             }
             rows={6}
             className={`w-full p-4 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -819,6 +780,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
           </div>
         )}
       </div>
+      )}
       
       {/* Advanced Options */}
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
@@ -910,7 +872,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={() => handlePublish(false)}
-          disabled={selectedAccounts.length === 0 || isPublishing}
+          disabled={!selectedAccount || !postType || isPublishing}
           className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Save as Draft
@@ -919,7 +881,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         {scheduledAt && (
           <button
             onClick={() => handlePublish(false)}
-            disabled={selectedAccounts.length === 0 || isPublishing || hasValidationIssues}
+            disabled={!selectedAccount || !postType || isPublishing || hasValidationIssues}
             className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPublishing ? 'Scheduling...' : 'Schedule Post'}
@@ -928,7 +890,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         
         <button
           onClick={() => handlePublish(true)}
-          disabled={selectedAccounts.length === 0 || isPublishing || isOverLimit || hasValidationIssues}
+          disabled={!selectedAccount || !postType || isPublishing || isOverLimit || hasValidationIssues}
           className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPublishing ? 'Publishing...' : 'Publish Now'}
