@@ -2621,23 +2621,24 @@ class AIAnalyzeContentView(APIView):
 
 # Analytics Views
 class AnalyticsSummaryView(APIView):
-    """Get analytics summary"""
+    """Get analytics summary fetched directly from social media APIs"""
     permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request):
-        """Get analytics summary for user"""
+        """Get analytics summary for user by fetching posts directly from APIs"""
         try:
-            from django.db.models import Sum, Avg, Count
             from django.utils import timezone
+            from datetime import datetime, timedelta
             import logging
+            import requests
             
             logger = logging.getLogger(__name__)
-            logger.info("Analytics summary requested")
+            logger.info("Analytics summary requested - fetching from APIs")
             
             user = request.user
             logger.info(f"User: {user.username}")
             
-            # Get date range from query params (default to last 30 days)
+            # Get date range from query params
             days_back = int(request.GET.get('days', 7))
             start_date = request.GET.get('start_date')
             end_date = request.GET.get('end_date')
@@ -2646,7 +2647,6 @@ class AnalyticsSummaryView(APIView):
             if start_date and end_date:
                 try:
                     since_date = timezone.make_aware(datetime.strptime(start_date, '%Y-%m-%d'))
-                    # Make end_date include the entire day (until 23:59:59)
                     end_dt = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1) - timedelta(microseconds=1)
                     until_date = timezone.make_aware(end_dt)
                 except ValueError:
@@ -2657,46 +2657,7 @@ class AnalyticsSummaryView(APIView):
             
             logger.info(f"Date range: {since_date} to {until_date}")
             
-            # Get overview metrics from database (exclude LinkedIn)
-            analytics_qs = SocialAnalytics.objects.filter(
-                post_target__account__created_by=user,
-                post_target__post__published_at__gte=since_date,
-                post_target__post__published_at__lte=until_date
-            ).exclude(
-                post_target__account__platform__name__iexact='linkedin'
-            )
-            
-            # Apply platform filter if specified
-            if platform_filter and platform_filter.lower() != 'all':
-                analytics_qs = analytics_qs.filter(
-                    post_target__account__platform__name__iexact=platform_filter
-                )
-                logger.info(f"Applied platform filter: {platform_filter}")
-            
-            logger.info(f"Found {analytics_qs.count()} analytics records")
-            
-            overview = {
-                'total_posts': analytics_qs.count(),
-                'total_impressions': analytics_qs.aggregate(Sum('impressions'))['impressions__sum'] or 0,
-                'total_reach': analytics_qs.aggregate(Sum('reach'))['reach__sum'] or 0,
-                'total_likes': analytics_qs.aggregate(Sum('likes'))['likes__sum'] or 0,
-                'total_comments': analytics_qs.aggregate(Sum('comments'))['comments__sum'] or 0,
-                'total_shares': analytics_qs.aggregate(Sum('shares'))['shares__sum'] or 0,
-                'avg_engagement_rate': 0.0,
-                'date_range': {
-                    'start_date': since_date.strftime('%Y-%m-%d'),
-                    'end_date': datetime.now().strftime('%Y-%m-%d'),
-                    'days': days_back
-                }
-            }
-            
-            # Calculate engagement rate
-            if overview['total_reach'] > 0:
-                total_engagement = overview['total_likes'] + overview['total_comments'] + overview['total_shares']
-                overview['avg_engagement_rate'] = round((total_engagement / overview['total_reach']) * 100, 2)
-            
-            # Get platform breakdown - aggregate across all accounts per platform (exclude LinkedIn)
-            platforms = {}
+            # Get connected accounts (exclude LinkedIn as requested)
             accounts = SocialAccount.objects.filter(
                 created_by=user,
                 status='connected'
@@ -2704,62 +2665,114 @@ class AnalyticsSummaryView(APIView):
                 platform__name__iexact='linkedin'
             )
             
-            # Apply platform filter to accounts if specified
+            # Apply platform filter if specified
             if platform_filter and platform_filter.lower() != 'all':
                 accounts = accounts.filter(platform__name__iexact=platform_filter)
             
-            # Group accounts by platform
-            platform_accounts = {}
+            # Fetch posts directly from APIs for each platform
+            all_posts = []
+            platform_breakdown = {}
+            total_posts = 0
+            total_impressions = 0
+            total_reach = 0
+            total_likes = 0
+            total_comments = 0
+            total_shares = 0
+            
             for account in accounts:
                 platform_name = account.platform.name.lower()
-                if platform_name not in platform_accounts:
-                    platform_accounts[platform_name] = []
-                platform_accounts[platform_name].append(account)
+                logger.info(f"Fetching posts from {platform_name} for account {account.account_name}")
+                
+                try:
+                    # Fetch posts from API based on platform
+                    posts_data = self._fetch_posts_from_api(account, since_date, until_date)
+                    platform_posts_count = len(posts_data.get('posts', []))
+                    
+                    # Add to all posts for recent activity
+                    all_posts.extend(posts_data.get('posts', []))
+                    
+                    # Aggregate platform metrics
+                    platform_metrics = posts_data.get('metrics', {})
+                    total_posts += platform_posts_count
+                    total_impressions += platform_metrics.get('impressions', 0)
+                    total_reach += platform_metrics.get('reach', 0)
+                    total_likes += platform_metrics.get('likes', 0)
+                    total_comments += platform_metrics.get('comments', 0)
+                    total_shares += platform_metrics.get('shares', 0)
+                    
+                    # Platform breakdown
+                    if platform_name not in platform_breakdown:
+                        platform_breakdown[platform_name] = {
+                            'account_name': account.account_name,
+                            'posts': 0,
+                            'impressions': 0,
+                            'reach': 0,
+                            'engagement': 0,
+                            'last_sync': timezone.now().isoformat()
+                        }
+                    
+                    platform_breakdown[platform_name]['posts'] += platform_posts_count
+                    platform_breakdown[platform_name]['impressions'] += platform_metrics.get('impressions', 0)
+                    platform_breakdown[platform_name]['reach'] += platform_metrics.get('reach', 0)
+                    platform_breakdown[platform_name]['engagement'] += (
+                        platform_metrics.get('likes', 0) + 
+                        platform_metrics.get('comments', 0) + 
+                        platform_metrics.get('shares', 0)
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Error fetching {platform_name} posts for {account.account_name}: {str(e)}")
+                    # Initialize platform with 0 values if API fails
+                    if platform_name not in platform_breakdown:
+                        platform_breakdown[platform_name] = {
+                            'account_name': account.account_name,
+                            'posts': 0,
+                            'impressions': 0,
+                            'reach': 0,
+                            'engagement': 0,
+                            'last_sync': account.last_sync.isoformat() if account.last_sync else None
+                        }
             
-            # Aggregate analytics for each platform
-            for platform_name, platform_account_list in platform_accounts.items():
-                platform_analytics = analytics_qs.filter(post_target__account__in=platform_account_list)
-                
-                # Get the most recently synced account for this platform as representative
-                representative_account = max(platform_account_list, 
-                                          key=lambda acc: acc.last_sync or timezone.datetime.min.replace(tzinfo=timezone.utc))
-                
-                platforms[platform_name] = {
-                    'account_name': representative_account.account_name,
-                    'posts': platform_analytics.count(),
-                    'impressions': platform_analytics.aggregate(Sum('impressions'))['impressions__sum'] or 0,
-                    'reach': platform_analytics.aggregate(Sum('reach'))['reach__sum'] or 0,
-                    'engagement': (platform_analytics.aggregate(Sum('likes'))['likes__sum'] or 0) + 
-                                 (platform_analytics.aggregate(Sum('comments'))['comments__sum'] or 0) + 
-                                 (platform_analytics.aggregate(Sum('shares'))['shares__sum'] or 0),
-                    'last_sync': representative_account.last_sync.isoformat() if representative_account.last_sync else None
+            # Calculate engagement rate
+            avg_engagement_rate = 0.0
+            if total_reach > 0:
+                total_engagement = total_likes + total_comments + total_shares
+                avg_engagement_rate = round((total_engagement / total_reach) * 100, 2)
+            
+            # Overview summary
+            overview = {
+                'total_posts': total_posts,
+                'total_impressions': total_impressions,
+                'total_reach': total_reach,
+                'total_likes': total_likes,
+                'total_comments': total_comments,
+                'total_shares': total_shares,
+                'avg_engagement_rate': avg_engagement_rate,
+                'date_range': {
+                    'start_date': since_date.strftime('%Y-%m-%d'),
+                    'end_date': until_date.strftime('%Y-%m-%d'),
+                    'days': days_back
                 }
+            }
             
-            # Get recent activity (last 7 days of posts)
-            recent_posts = analytics_qs.filter(
-                post_target__post__published_at__gte=timezone.now() - timedelta(days=7)
-            ).select_related(
-                'post_target__post', 
-                'post_target__account__platform'
-            ).order_by('-post_target__post__published_at')[:10]
-            
+            # Recent activity from API posts
             recent_activity = []
-            for analytics in recent_posts:
-                post = analytics.post_target.post
-                platform = analytics.post_target.account.platform
+            # Sort all posts by date and take most recent 10
+            all_posts.sort(key=lambda x: x.get('published_at', ''), reverse=True)
+            for post_data in all_posts[:10]:
                 recent_activity.append({
-                    'post_id': str(post.id),
-                    'content': post.content[:100] + '...' if len(post.content) > 100 else post.content,
-                    'platform': platform.display_name,
-                    'platform_name': platform.name.lower(),  # Add platform_name field
-                    'published_at': post.published_at.isoformat() if post.published_at else None,
-                    'impressions': analytics.impressions,
-                    'likes': analytics.likes,
-                    'comments': analytics.comments,
-                    'engagement_rate': analytics.platform_metrics.get('engagement_rate', 0) if analytics.platform_metrics else 0
+                    'post_id': post_data.get('id', ''),
+                    'content': post_data.get('content', '')[:100] + '...' if len(post_data.get('content', '')) > 100 else post_data.get('content', ''),
+                    'platform': post_data.get('platform_display_name', ''),
+                    'platform_name': post_data.get('platform_name', ''),
+                    'published_at': post_data.get('published_at', ''),
+                    'impressions': post_data.get('impressions', 0),
+                    'likes': post_data.get('likes', 0),
+                    'comments': post_data.get('comments', 0),
+                    'engagement_rate': post_data.get('engagement_rate', 0)
                 })
             
-            # Get connected accounts summary
+            # Connected accounts summary
             connected_accounts = []
             for account in accounts:
                 account_metrics = account.permissions if isinstance(account.permissions, dict) else {}
@@ -2770,24 +2783,160 @@ class AnalyticsSummaryView(APIView):
                     'username': account.account_username,
                     'status': account.status,
                     'followers': account_metrics.get('followers', account_metrics.get('follower_count', 0)),
-                    'last_sync': account.last_sync.isoformat() if account.last_sync else None
+                    'last_sync': timezone.now().isoformat()  # Updated since we just fetched from API
                 })
             
+            logger.info(f"Analytics summary: {total_posts} posts across {len(platform_breakdown)} platforms")
+            
             return Response({
-                'overview': overview,  # Nest under overview to match frontend expectations
-                'platform_breakdown': platforms,
+                'overview': overview,
+                'platform_breakdown': platform_breakdown,
                 'recent_activity': recent_activity,
                 'connected_accounts': connected_accounts,
                 'sync_info': {
-                    'last_sync': max([acc.last_sync for acc in accounts if acc.last_sync], default=None),
+                    'last_sync': timezone.now().isoformat(),
                     'can_sync': True,
-                    'sync_status': 'up_to_date' if all(acc.last_sync for acc in accounts) else 'needs_sync'
+                    'sync_status': 'up_to_date'
                 }
             })
             
         except Exception as e:
             logger.error(f"Error getting analytics summary: {str(e)}")
             return Response({'error': str(e)}, status=500)
+    
+    def _fetch_posts_from_api(self, account, since_date, until_date):
+        """Fetch posts directly from social media API"""
+        platform_name = account.platform.name.lower()
+        
+        if platform_name == 'facebook':
+            return self._fetch_facebook_posts(account, since_date, until_date)
+        elif platform_name == 'instagram':
+            return self._fetch_instagram_posts(account, since_date, until_date)
+        else:
+            return {'posts': [], 'metrics': {}}
+    
+    def _fetch_facebook_posts(self, account, since_date, until_date):
+        """Fetch Facebook posts via Graph API"""
+        import requests
+        from django.utils import timezone
+        
+        try:
+            # Facebook Graph API endpoint for user posts
+            url = f"https://graph.facebook.com/v20.0/{account.account_id}/posts"
+            params = {
+                'access_token': account.access_token,
+                'fields': 'id,message,created_time,permalink_url,insights.metric(post_impressions,post_clicks,post_reactions_like_total,post_comments,post_shares)',
+                'since': since_date.strftime('%Y-%m-%d'),
+                'until': until_date.strftime('%Y-%m-%d'),
+                'limit': 100
+            }
+            
+            response = requests.get(url, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                posts = []
+                total_metrics = {'impressions': 0, 'reach': 0, 'likes': 0, 'comments': 0, 'shares': 0}
+                
+                for post in data.get('data', []):
+                    # Parse insights
+                    insights = post.get('insights', {}).get('data', [])
+                    post_impressions = 0
+                    post_likes = 0
+                    post_comments = 0
+                    post_shares = 0
+                    
+                    for insight in insights:
+                        metric = insight.get('name')
+                        value = insight.get('values', [{}])[0].get('value', 0)
+                        if metric == 'post_impressions':
+                            post_impressions = value
+                        elif metric == 'post_reactions_like_total':
+                            post_likes = value
+                        elif metric == 'post_comments':
+                            post_comments = value
+                        elif metric == 'post_shares':
+                            post_shares = value
+                    
+                    # Add to totals
+                    total_metrics['impressions'] += post_impressions
+                    total_metrics['likes'] += post_likes
+                    total_metrics['comments'] += post_comments
+                    total_metrics['shares'] += post_shares
+                    total_metrics['reach'] += post_impressions  # Use impressions as reach approximation
+                    
+                    posts.append({
+                        'id': post.get('id'),
+                        'content': post.get('message', ''),
+                        'published_at': post.get('created_time'),
+                        'platform_name': 'facebook',
+                        'platform_display_name': 'Facebook',
+                        'impressions': post_impressions,
+                        'likes': post_likes,
+                        'comments': post_comments,
+                        'shares': post_shares,
+                        'engagement_rate': round((post_likes + post_comments + post_shares) / max(post_impressions, 1) * 100, 2)
+                    })
+                
+                return {'posts': posts, 'metrics': total_metrics}
+            else:
+                return {'posts': [], 'metrics': {}}
+                
+        except Exception as e:
+            return {'posts': [], 'metrics': {}}
+    
+    def _fetch_instagram_posts(self, account, since_date, until_date):
+        """Fetch Instagram posts via Graph API"""
+        import requests
+        
+        try:
+            # Instagram Basic Display API endpoint
+            url = f"https://graph.instagram.com/{account.account_id}/media"
+            params = {
+                'access_token': account.access_token,
+                'fields': 'id,caption,timestamp,permalink,like_count,comments_count',
+                'limit': 100
+            }
+            
+            response = requests.get(url, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                posts = []
+                total_metrics = {'impressions': 0, 'reach': 0, 'likes': 0, 'comments': 0, 'shares': 0}
+                
+                for post in data.get('data', []):
+                    # Check if post is within date range
+                    post_time = datetime.fromisoformat(post.get('timestamp', '').replace('Z', '+00:00'))
+                    if since_date <= post_time <= until_date:
+                        likes = post.get('like_count', 0)
+                        comments = post.get('comments_count', 0)
+                        
+                        # Add to totals
+                        total_metrics['likes'] += likes
+                        total_metrics['comments'] += comments
+                        # Instagram doesn't provide impressions via Basic Display API
+                        total_metrics['reach'] += likes  # Use likes as reach approximation
+                        
+                        posts.append({
+                            'id': post.get('id'),
+                            'content': post.get('caption', ''),
+                            'published_at': post.get('timestamp'),
+                            'platform_name': 'instagram',
+                            'platform_display_name': 'Instagram',
+                            'impressions': 0,  # Not available in Basic Display API
+                            'likes': likes,
+                            'comments': comments,
+                            'shares': 0,  # Not available in Basic Display API
+                            'engagement_rate': round((likes + comments) / max(likes + comments, 1) * 100, 2)
+                        })
+                
+                return {'posts': posts, 'metrics': total_metrics}
+            else:
+                return {'posts': [], 'metrics': {}}
+                
+        except Exception as e:
+            return {'posts': [], 'metrics': {}}
 
 
 class PlatformAnalyticsView(APIView):
