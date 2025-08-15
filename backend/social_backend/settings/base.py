@@ -6,9 +6,6 @@ Common settings shared between development and production.
 
 from pathlib import Path
 from decouple import config
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
-from sentry_sdk.integrations.celery import CeleryIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -171,41 +168,3 @@ LINKEDIN_CLIENT_SECRET = config('LINKEDIN_CLIENT_SECRET', default='')
 
 # OpenAI API
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
-
-# Sentry Configuration for Error Monitoring
-SENTRY_DSN = config('SENTRY_DSN', default='')
-SENTRY_ENVIRONMENT = config('SENTRY_ENVIRONMENT', default='development')
-
-# Initialize Sentry if DSN is provided
-if SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        integrations=[
-            DjangoIntegration(
-                transaction_style='url',
-                middleware_spans=True,
-                signals_spans=True,
-            ),
-            CeleryIntegration(
-                monitor_beat_tasks=True,
-                propagate_traces=True,
-            ),
-        ],
-        
-        # Performance Monitoring
-        traces_sample_rate=config('SENTRY_TRACES_SAMPLE_RATE', default=1.0, cast=float),
-        
-        # Error Monitoring
-        send_default_pii=config('SENTRY_SEND_PII', default=True, cast=bool),
-        
-        # Environment and Release Tracking
-        environment=SENTRY_ENVIRONMENT,
-        release=config('SENTRY_RELEASE', default=None),
-        
-        # Additional Options
-        attach_stacktrace=True,
-        max_breadcrumbs=50,
-        
-        # Filter out common non-critical errors
-        before_send=lambda event, hint: None if 'Http404' in str(hint.get('exc_info', '')) else event,
-    )

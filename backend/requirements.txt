@@ -20,9 +20,6 @@ python-decouple==3.8
 openai==1.58.1
 Pillow==11.0.0
 
-# Error Monitoring
-sentry-sdk[django]==2.35.0
-
 # Production server
 gunicorn==23.0.0
 

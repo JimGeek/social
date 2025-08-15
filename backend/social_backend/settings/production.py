@@ -40,6 +40,7 @@ CELERY_TASK_ALWAYS_EAGER = False  # Use real task queue in production
 # Production OAuth redirect URIs
 FACEBOOK_REDIRECT_URI = config('FACEBOOK_REDIRECT_URI', default='https://social-api.marvelhomes.pro/api/social/auth/facebook/callback/')
 FRONTEND_URL = config('FRONTEND_URL', default='https://social.marvelhomes.pro')
+BACKEND_URL = config('BACKEND_URL', default='https://social-api.marvelhomes.pro')
 
 # Security settings for production
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)

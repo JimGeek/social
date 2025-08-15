@@ -52,10 +52,19 @@ FACEBOOK_APP_ID=
 FACEBOOK_APP_SECRET=
 INSTAGRAM_BASIC_APP_ID=
 INSTAGRAM_BASIC_APP_SECRET=
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+
+# Sentry Configuration
+SENTRY_DSN=
+SENTRY_ENVIRONMENT=production
+SENTRY_TRACES_SAMPLE_RATE=0.1
+SENTRY_SEND_PII=False
 
 # URLs
 FACEBOOK_REDIRECT_URI=https://social-api.marvelhomes.pro/api/social/auth/facebook/callback/
 FRONTEND_URL=https://social.marvelhomes.pro
+BACKEND_URL=https://social-api.marvelhomes.pro
 EOF
 
 echo "⚠️  IMPORTANT: Please edit /var/www/social-api/.env and add your API keys!"
@@ -66,8 +75,11 @@ sudo -u postgres createuser social_user 2>/dev/null || true
 sudo -u postgres psql -c "ALTER USER social_user WITH PASSWORD 'your_secure_password_here';" 2>/dev/null || true
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE social_db TO social_user;" 2>/dev/null || true
 
+# Set Django settings module for production
+echo "DJANGO_SETTINGS_MODULE=social_backend.settings.production" >> .env
+
 # Run Django migrations
-export DJANGO_SETTINGS_MODULE=social_backend.settings_production
+export DJANGO_SETTINGS_MODULE=social_backend.settings.production
 python3 manage.py migrate
 python3 manage.py collectstatic --noinput
 
