@@ -1,0 +1,19 @@
+[Unit]
+Description=Social Media Manager Deployment Webhook
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/social-media/backend
+Environment=WEBHOOK_SECRET=social_media_webhook_secret_2025
+ExecStart=/opt/social-media/backend/venv/bin/python /opt/social-media/backend/deployment_webhook.py
+Restart=always
+RestartSec=5
+
+# Logging
+StandardOutput=append:/var/log/deployment-webhook.log
+StandardError=append:/var/log/deployment-webhook.log
+
+[Install]
+WantedBy=multi-user.target

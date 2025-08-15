@@ -1,0 +1,29 @@
+[Unit]
+Description=Social Media Manager Celery Beat Scheduler
+After=network.target redis.service postgresql.service
+Wants=redis.service postgresql.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/social-media/backend
+Environment=PATH=/opt/social-media/backend/venv/bin
+EnvironmentFile=/opt/social-media/backend/.env
+ExecStart=/opt/social-media/backend/venv/bin/celery -A social_backend beat --loglevel=info --pidfile=/run/celery/beat.pid --logfile=/var/log/celery-beat.log --scheduler django_celery_beat.schedulers:DatabaseScheduler
+PIDFile=/run/celery/beat.pid
+Restart=always
+RestartSec=10
+
+# Create PID directory
+RuntimeDirectory=celery
+RuntimeDirectoryMode=755
+
+# Security settings
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/social-media /var/log /run/celery /tmp
+
+[Install]
+WantedBy=multi-user.target
