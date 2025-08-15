@@ -62,7 +62,7 @@ class SocialAccount(models.Model):
     account_id = models.CharField(max_length=100)  # Platform-specific account ID
     account_name = models.CharField(max_length=200)
     account_username = models.CharField(max_length=100, blank=True)
-    profile_picture_url = models.URLField(blank=True)
+    profile_picture_url = models.URLField(max_length=500, blank=True)
     
     # OAuth tokens
     access_token = models.TextField()

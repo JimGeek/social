@@ -1982,7 +1982,7 @@ class LinkedInCallbackView(APIView):
             logger.error(f"Profile picture URL: {profile_picture_url}")
             
             # Truncate fields to database limits
-            truncated_profile_picture_url = profile_picture_url[:200] if profile_picture_url else ''
+            truncated_profile_picture_url = profile_picture_url[:500] if profile_picture_url else ''
             truncated_account_name = account_name[:200] if account_name else ''
             
             # Create or update LinkedIn account
