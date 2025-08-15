@@ -194,7 +194,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
       case 'connected': return 'text-green-600 bg-green-100';
       case 'expired': return 'text-yellow-600 bg-yellow-100';
       case 'error': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      default: return 'text-brand-600 bg-brand-100';
     }
   };
 
@@ -246,8 +246,8 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
       )}
 
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Social Media Settings</h1>
-        <p className="text-gray-600 mt-2">Connect and manage your social media accounts</p>
+        <h1 className="text-3xl font-bold text-brand-900">Social Media Settings</h1>
+        <p className="text-brand-600 mt-2">Connect and manage your social media accounts</p>
       </div>
 
       {/* Connected Accounts Summary */}
@@ -293,7 +293,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold">{platform.display_name}</h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-brand-600">
                       {connectedAccounts.length} account{connectedAccounts.length !== 1 ? 's' : ''} connected
                     </p>
                   </div>
@@ -305,7 +305,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                       <button
                         onClick={handleFacebookConnect}
                         disabled={isConnecting === 'facebook'}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+                        className="px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 disabled:opacity-50 flex items-center space-x-2"
                       >
                         {isConnecting === 'facebook' ? (
                           <>
@@ -373,7 +373,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                       <button
                         onClick={handleLinkedInConnect}
                         disabled={isConnecting === 'linkedin'}
-                        className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 disabled:opacity-50 flex items-center space-x-2"
+                        className="px-4 py-2 bg-brand-900 text-white rounded-lg hover:bg-brand-950 disabled:opacity-50 flex items-center space-x-2"
                       >
                         {isConnecting === 'linkedin' ? (
                           <>
@@ -392,7 +392,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="px-4 py-2 bg-gray-100 text-gray-500 rounded-lg">
+                  <div className="px-4 py-2 bg-brand-100 text-brand-600 rounded-lg">
                     Coming Soon
                   </div>
                 )}
@@ -401,9 +401,9 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
               {/* Connected Accounts List */}
               {connectedAccounts.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="font-medium text-gray-900">Connected Accounts</h4>
+                  <h4 className="font-medium text-brand-900">Connected Accounts</h4>
                   {connectedAccounts.map((account) => (
-                    <div key={account.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={account.id} className="flex items-center justify-between p-3 bg-brand-50 rounded-lg">
                       <div className="flex items-center space-x-3">
                         {account.profile_picture_url ? (
                           <img 
@@ -420,8 +420,8 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                           </div>
                         )}
                         <div>
-                          <p className="font-medium text-gray-900">{account.account_name}</p>
-                          <p className="text-sm text-gray-500">@{account.account_username || account.account_id}</p>
+                          <p className="font-medium text-brand-900">{account.account_name}</p>
+                          <p className="text-sm text-brand-600">@{account.account_username || account.account_id}</p>
                           
                           {/* Posting capability indicator */}
                           {!account.posting_enabled && (
@@ -464,7 +464,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               account.connection_type === 'instagram_direct' 
                                 ? 'bg-pink-100 text-pink-800' 
-                                : 'bg-blue-100 text-blue-800'
+                                : 'bg-brand-100 text-brand-800'
                             }`}>
                               {account.connection_type === 'instagram_direct' ? 'Direct' : 'via Facebook'}
                             </span>
@@ -481,7 +481,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                             {account.platform.name === 'linkedin' ? (
                               <button
                                 onClick={() => handleLinkedInConnect()}
-                                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                className="px-3 py-1 text-sm bg-brand-800 text-white rounded hover:bg-brand-900"
                                 disabled={isConnecting === 'linkedin'}
                               >
                                 {isConnecting === 'linkedin' ? 'Reconnecting...' : 'Reconnect LinkedIn'}
@@ -510,13 +510,13 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
 
               {/* Platform Features */}
               <div className="mt-4 pt-4 border-t border-gray-100">
-                <h4 className="font-medium text-gray-900 mb-2">Platform Features</h4>
+                <h4 className="font-medium text-brand-900 mb-2">Platform Features</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                   <div className="flex items-center space-x-2">
                     <svg className={`w-4 h-4 ${platform.supports_scheduling ? 'text-green-500' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                     </svg>
-                    <span className={platform.supports_scheduling ? 'text-gray-700' : 'text-gray-400'}>
+                    <span className={platform.supports_scheduling ? 'text-brand-700' : 'text-gray-400'}>
                       Scheduling
                     </span>
                   </div>
@@ -524,7 +524,7 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                     <svg className={`w-4 h-4 ${platform.supports_hashtags ? 'text-green-500' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727 1.213L9.53 6h2.94l.56-2.243a1 1 0 111.94.486L14.53 6H17a1 1 0 110 2h-2.97l-1 4H15a1 1 0 110 2h-2.47l-.56 2.242a1 1 1-1.94-.485L10.47 14H7.53l-.56 2.242a1 1 0 11-1.94-.485L5.47 14H3a1 1 0 110-2h2.97l1-4H5a1 1 0 110-2h2.47l.56-2.243a1 1 0 011.213-.727zM9.03 8l-1 4h2.94l1-4H9.03z" clipRule="evenodd" />
                     </svg>
-                    <span className={platform.supports_hashtags ? 'text-gray-700' : 'text-gray-400'}>
+                    <span className={platform.supports_hashtags ? 'text-brand-700' : 'text-gray-400'}>
                       Hashtags
                     </span>
                   </div>
@@ -532,12 +532,12 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
                     <svg className={`w-4 h-4 ${platform.supports_first_comment ? 'text-green-500' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
                     </svg>
-                    <span className={platform.supports_first_comment ? 'text-gray-700' : 'text-gray-400'}>
+                    <span className={platform.supports_first_comment ? 'text-brand-700' : 'text-gray-400'}>
                       First Comment
                     </span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-gray-700">{platform.max_text_length} chars</span>
+                    <span className="text-brand-700">{platform.max_text_length} chars</span>
                   </div>
                 </div>
               </div>
@@ -547,9 +547,9 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
       </div>
 
       {/* Help Section */}
-      <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="font-semibold text-blue-900 mb-2">Need Help?</h3>
-        <p className="text-blue-800 mb-4">
+      <div className="mt-8 p-6 bg-brand-50 border border-brand-200 rounded-lg">
+        <h3 className="font-semibold text-brand-900 mb-2">Need Help?</h3>
+        <p className="text-brand-800 mb-4">
           <strong>Facebook:</strong> Requires Facebook App setup with API keys.<br/>
           <strong>Instagram via Facebook:</strong> For Business accounts connected to Facebook Pages (posting enabled). ✅ Working<br/>
           <strong>Instagram Direct:</strong> For personal accounts using Instagram Login API (read-only access). ✅ Ready
@@ -557,13 +557,13 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
         <div className="flex space-x-4">
           <button
             onClick={() => window.open('/FACEBOOK_SETUP.md', '_blank')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900"
           >
             Facebook Setup Guide
           </button>
           <button
             onClick={() => window.open('https://developers.facebook.com/', '_blank')}
-            className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white"
+            className="px-4 py-2 border border-brand-800 text-brand-800 rounded-lg hover:bg-brand-800 hover:text-white"
           >
             Facebook Developers
           </button>

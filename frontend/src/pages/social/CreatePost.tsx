@@ -397,8 +397,8 @@ const CreatePost: React.FC<CreatePostProps> = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Create Post</h1>
-        <p className="text-gray-600 mt-2">Create and publish content across your social media platforms</p>
+        <h1 className="text-3xl font-bold text-brand-900">Create Post</h1>
+        <p className="text-brand-600 mt-2">Create and publish content across your social media platforms</p>
       </div>
       
       {/* Platform Selection */}
@@ -412,11 +412,11 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
             </div>
-            <h3 className="text-gray-900 font-medium mb-2">No connected accounts</h3>
-            <p className="text-gray-500 mb-4">Connect your social media accounts to start posting</p>
+            <h3 className="text-brand-900 font-medium mb-2">No connected accounts</h3>
+            <p className="text-brand-600 mb-4">Connect your social media accounts to start posting</p>
             <button
               onClick={() => navigate(`/${organizationSlug}/social/settings`)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-brand-800 text-white px-4 py-2 rounded-lg hover:bg-brand-900 transition-colors"
             >
               Connect Accounts
             </button>
@@ -431,7 +431,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                   !account.posting_enabled
                     ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-60'
                     : selectedAccount === account.id
-                    ? 'border-blue-500 bg-blue-50 cursor-pointer'
+                    ? 'border-brand-800 bg-brand-50 cursor-pointer'
                     : 'border-gray-200 hover:border-gray-300 cursor-pointer'
                 }`}
               >
@@ -443,8 +443,8 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                     {account.platform.display_name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{account.account_name}</p>
-                    <p className="text-sm text-gray-500">{account.platform.display_name}</p>
+                    <p className="font-medium text-brand-900 truncate">{account.account_name}</p>
+                    <p className="text-sm text-brand-600">{account.platform.display_name}</p>
                     {!account.posting_enabled && (
                       <p className="text-xs text-red-500 flex items-center space-x-1 mt-1">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -455,7 +455,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                     )}
                   </div>
                   {selectedAccount === account.id && account.posting_enabled && (
-                    <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-brand-800" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   )}
@@ -489,13 +489,13 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                   onClick={() => handlePostTypeChange(type as any)}
                   className={`p-4 text-center rounded-lg border-2 transition-all ${
                     postType === type
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      ? 'border-brand-800 bg-brand-50 text-brand-800'
+                      : 'border-gray-200 hover:border-gray-300 text-brand-700'
                   }`}
                 >
                   <div className="text-2xl mb-2">{config.icon}</div>
                   <div className="font-medium text-sm">{config.label}</div>
-                  <div className="text-xs text-gray-500 mt-1">{config.description}</div>
+                  <div className="text-xs text-brand-600 mt-1">{config.description}</div>
                 </button>
               );
             })}
@@ -503,12 +503,12 @@ const CreatePost: React.FC<CreatePostProps> = () => {
           
           {/* Platform-specific notes */}
           {selectedPlatformName === 'instagram' && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="mt-4 p-3 bg-brand-50 border border-brand-200 rounded-lg">
               <div className="flex items-start space-x-2">
-                <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5 text-brand-800 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
-                <div className="text-sm text-blue-800">
+                <div className="text-sm text-brand-800">
                   <p className="font-medium">Instagram Requirements:</p>
                   <ul className="mt-1 list-disc list-inside space-y-1">
                     <li>All posts require at least one image or video</li>
@@ -528,7 +528,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Media Files</h2>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-brand-600">
             {mediaFiles.length} file{mediaFiles.length !== 1 ? 's' : ''} uploaded
           </span>
         </div>
@@ -537,7 +537,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragActive 
-              ? 'border-blue-500 bg-blue-50' 
+              ? 'border-brand-800 bg-brand-50' 
               : 'border-gray-300 hover:border-gray-400'
           }`}
           onDragEnter={handleDrag}
@@ -547,10 +547,10 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         >
           {isUploadingMedia ? (
             <div className="space-y-2">
-              <svg className="mx-auto h-8 w-8 text-blue-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="mx-auto h-8 w-8 text-brand-800 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              <p className="text-blue-600 font-medium">Uploading files...</p>
+              <p className="text-brand-800 font-medium">Uploading files...</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -558,8 +558,8 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               <div>
-                <p className="text-gray-700 font-medium">Drop files here or click to browse</p>
-                <p className="text-sm text-gray-500">Supports JPEG, PNG, GIF, MP4, MOV (max 100MB)</p>
+                <p className="text-brand-700 font-medium">Drop files here or click to browse</p>
+                <p className="text-sm text-brand-600">Supports JPEG, PNG, GIF, MP4, MOV (max 100MB)</p>
               </div>
               <input
                 type="file"
@@ -571,7 +571,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
               />
               <label
                 htmlFor="file-input"
-                className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
+                className="inline-block bg-brand-800 text-white px-4 py-2 rounded-lg hover:bg-brand-900 cursor-pointer transition-colors"
               >
                 Choose Files
               </label>
@@ -582,7 +582,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         {/* Uploaded files preview */}
         {mediaFiles.length > 0 && (
           <div className="mt-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Uploaded Files</h3>
+            <h3 className="text-sm font-medium text-brand-700 mb-3">Uploaded Files</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {mediaFiles.map((file) => (
                 <div key={file.id} className="relative bg-gray-50 rounded-lg p-3">
@@ -598,16 +598,16 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                         <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-brand-600">
                           {file.duration ? `${Math.round(file.duration)}s` : 'Video'}
                         </span>
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-600 truncate" title={file.file_name}>
+                  <p className="text-xs text-brand-600 truncate" title={file.file_name}>
                     {file.file_name}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-brand-600">
                     {file.file_size_mb.toFixed(1)} MB
                     {file.width && file.height && ` • ${file.width}×${file.height}`}
                   </p>
@@ -660,7 +660,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{postType === 'text' ? 'Post Content' : 'Caption'}</h2>
           <div className="flex items-center space-x-2">
-            <span className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>
+            <span className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-brand-600'}`}>
               {characterCount}/{characterLimit}
             </span>
             {isOverLimit && (
@@ -683,7 +683,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
               "Write a caption for your post..."
             }
             rows={6}
-            className={`w-full p-4 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+            className={`w-full p-4 border rounded-lg resize-none focus:ring-2 focus:ring-brand-800 focus:border-transparent ${
               isOverLimit ? 'border-red-300 bg-red-50' : 'border-gray-300'
             }`}
           />
@@ -693,7 +693,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
             <button
               onClick={() => getAISuggestions('improve')}
               disabled={!content.trim() || isAILoading}
-              className="p-2 text-gray-500 hover:text-blue-600 disabled:opacity-50"
+              className="p-2 text-brand-600 hover:text-brand-800 disabled:opacity-50"
               title="AI Improve"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -703,7 +703,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
             <button
               onClick={() => getAISuggestions('shorten')}
               disabled={!content.trim() || isAILoading}
-              className="p-2 text-gray-500 hover:text-blue-600 disabled:opacity-50"
+              className="p-2 text-brand-600 hover:text-brand-800 disabled:opacity-50"
               title="AI Shorten"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -713,7 +713,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
             <button
               onClick={() => getAISuggestions('expand')}
               disabled={!content.trim() || isAILoading}
-              className="p-2 text-gray-500 hover:text-blue-600 disabled:opacity-50"
+              className="p-2 text-brand-600 hover:text-brand-800 disabled:opacity-50"
               title="AI Expand"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -725,12 +725,12 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         
         {/* AI Suggestions Panel */}
         {showAISuggestions && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mt-4 p-4 bg-brand-50 border border-brand-200 rounded-lg">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-blue-900">AI Suggestions</h3>
+              <h3 className="font-medium text-brand-900">AI Suggestions</h3>
               <button
                 onClick={() => setShowAISuggestions(false)}
-                className="text-blue-600 hover:text-blue-800"
+                className="text-brand-800 hover:text-brand-800"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -748,7 +748,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                     </span>
                     <button
                       onClick={() => applySuggestion(suggestion)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      className="text-brand-800 hover:text-brand-800 text-sm font-medium"
                     >
                       Use This
                     </button>
@@ -782,17 +782,17 @@ const CreatePost: React.FC<CreatePostProps> = () => {
           <div className="mt-4 space-y-4">
             {/* Hashtags */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Hashtags</label>
+              <label className="block text-sm font-medium text-brand-700 mb-2">Hashtags</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {hashtags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-brand-100 text-brand-800"
                   >
                     #{tag}
                     <button
                       onClick={() => removeHashtag(tag)}
-                      className="ml-2 text-blue-600 hover:text-blue-800"
+                      className="ml-2 text-brand-800 hover:text-brand-800"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -808,11 +808,11 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                   onChange={(e) => setHashtagInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addHashtag()}
                   placeholder="Add hashtag"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                 />
                 <button
                   onClick={addHashtag}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900"
                 >
                   Add
                 </button>
@@ -821,7 +821,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
             
             {/* First Comment */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-brand-700 mb-2">
                 First Comment (Instagram/Facebook)
               </label>
               <textarea
@@ -829,18 +829,18 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                 onChange={(e) => setFirstComment(e.target.value)}
                 placeholder="Add a first comment..."
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
               />
             </div>
             
             {/* Scheduling */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Schedule Post</label>
+              <label className="block text-sm font-medium text-brand-700 mb-2">Schedule Post</label>
               <input
                 type="datetime-local"
                 value={scheduledAt}
                 onChange={(e) => setScheduledAt(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
               />
             </div>
           </div>
@@ -852,7 +852,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         <button
           onClick={() => handlePublish(false)}
           disabled={!selectedAccount || !postType || isPublishing}
-          className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-6 py-3 border border-gray-300 text-brand-700 rounded-lg hover:bg-brand-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Save as Draft
         </button>
@@ -870,7 +870,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         <button
           onClick={() => handlePublish(true)}
           disabled={!selectedAccount || !postType || isPublishing || isOverLimit || hasValidationIssues}
-          className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-6 py-3 bg-brand-800 text-white rounded-lg hover:bg-brand-900 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPublishing ? 'Publishing...' : 'Publish Now'}
         </button>

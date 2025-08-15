@@ -1,0 +1,18 @@
+<svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Speech bubble background -->
+  <path d="M15 20C15 16.686 17.686 14 21 14H79C82.314 14 85 16.686 85 20V55C85 58.314 82.314 61 79 61H35L20 75V20Z" fill="#2b3539" stroke="#2b3539" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Three people icons inside speech bubble -->
+  
+  <!-- Left person - smaller -->
+  <circle cx="33" cy="32" r="6" fill="#fefdfc"/>
+  <path d="M20 55C20 49.477 24.477 45 30 45H36C41.523 45 46 49.477 46 55V55" fill="#fefdfc"/>
+  
+  <!-- Center person - larger -->
+  <circle cx="50" cy="30" r="8" fill="#fefdfc"/>
+  <path d="M35 55C35 48.373 40.373 43 47 43H53C59.627 43 65 48.373 65 55V55" fill="#fefdfc"/>
+  
+  <!-- Right person - smaller -->
+  <circle cx="67" cy="32" r="6" fill="#fefdfc"/>
+  <path d="M54 55C54 49.477 58.477 45 64 45H70C75.523 45 80 49.477 80 55V55" fill="#fefdfc"/>
+</svg>

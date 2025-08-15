@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Logo from './Logo';
 
 // Social Media Icons
 const DashboardIcon = ({ className }: { className?: string }) => (
@@ -84,10 +85,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
       >
         {/* Header */}
         <div className="flex items-center justify-center h-16 px-4 border-b border-slate-700">
-          <Link to="/dashboard" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-500">
-              <span className="text-white font-bold text-lg">S</span>
-            </div>
+          <Link to="/dashboard" className="flex items-center space-x-3">
+            <Logo className="" size={40} />
             <span className="text-white text-xl font-bold">Social Media</span>
           </Link>
         </div>
@@ -105,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                   to={item.path}
                   className={`group flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
                     isActive
-                      ? 'text-white bg-brand-500 shadow-sm'
+                      ? 'text-white bg-brand-800 shadow-sm'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800'
                   }`}
                   onClick={() => setIsOpen(false)}
@@ -128,7 +127,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
           <div className="mt-8 pt-6 border-t border-slate-700">
             <div className="px-4 py-2">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-brand-800 flex items-center justify-center">
                   <span className="text-white font-medium text-sm">
                     {user?.first_name?.charAt(0) || 'U'}
                   </span>

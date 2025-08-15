@@ -241,7 +241,7 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
       case 'positive': return 'text-green-600 bg-green-100';
       case 'negative': return 'text-red-600 bg-red-100';
       case 'neutral': return 'text-gray-600 bg-gray-100';
-      case 'question': return 'text-blue-600 bg-blue-100';
+      case 'question': return 'text-brand-800 bg-brand-100';
       case 'complaint': return 'text-orange-600 bg-orange-100';
       default: return 'text-gray-600 bg-gray-100';
     }
@@ -315,7 +315,7 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
           </div>
           
           <div className="flex items-center space-x-3">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <button className="px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 transition-colors">
               Mark All Read
             </button>
           </div>
@@ -329,14 +329,14 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search comments and messages..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
             />
           </div>
           
           <select
             value={filters.platform}
             onChange={(e) => setFilters(prev => ({ ...prev, platform: e.target.value }))}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
           >
             <option value="all">All Platforms</option>
             {platforms.map(platform => (
@@ -349,7 +349,7 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
           <select
             value={filters.sentiment}
             onChange={(e) => setFilters(prev => ({ ...prev, sentiment: e.target.value }))}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
           >
             <option value="all">All Sentiments</option>
             <option value="positive">Positive</option>
@@ -362,7 +362,7 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
           <select
             value={filters.priority}
             onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
           >
             <option value="all">All Priorities</option>
             <option value="high">High Priority</option>
@@ -385,13 +385,13 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
+                    ? 'border-brand-800 text-brand-800'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <span>{tab.label}</span>
                 <span className={`px-2 py-1 text-xs rounded-full ${
-                  activeTab === tab.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                  activeTab === tab.id ? 'bg-brand-100 text-brand-800' : 'bg-gray-100 text-gray-600'
                 }`}>
                   {getTabCount(tab.id)}
                 </span>
@@ -414,7 +414,7 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
         ) : (
           filteredComments.map((comment) => (
             <div key={comment.id} className={`bg-white rounded-lg shadow-sm border p-6 transition-colors ${
-              !comment.is_replied ? 'border-l-4 border-l-blue-500' : ''
+              !comment.is_replied ? 'border-l-4 border-l-brand-800' : ''
             }`}>
               {/* Comment Header */}
               <div className="flex items-start justify-between mb-4">
@@ -490,7 +490,7 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
                       setShowReplyModal(true);
                     }}
                     disabled={comment.is_replied}
-                    className="flex items-center space-x-1 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center space-x-1 px-3 py-1.5 text-sm text-brand-800 hover:text-brand-900 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -561,7 +561,7 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
                 onChange={(e) => setReplyText(e.target.value)}
                 rows={4}
                 placeholder="Write your reply..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800 resize-none"
               />
               
               <div className="flex space-x-3">
@@ -578,7 +578,7 @@ const EngagementInbox: React.FC<EngagementInboxProps> = () => {
                 <button
                   onClick={handleReply}
                   disabled={!replyText.trim() || isReplying}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center"
+                  className="flex-1 px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 disabled:opacity-50 transition-colors flex items-center justify-center"
                 >
                   {isReplying ? (
                     <>

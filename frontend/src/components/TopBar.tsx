@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import Logo from './Logo';
 
 interface TopBarProps {
   toggleSidebar: () => void;
@@ -39,10 +40,8 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar }) => {
           
           {/* App Logo and Name */}
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-md flex items-center justify-center text-white font-bold text-sm bg-brand-500">
-              S
-            </div>
-            <h1 className="text-xl font-bold hidden sm:block text-brand-600">
+            <Logo className="" size={32} />
+            <h1 className="text-xl font-bold hidden sm:block text-brand-800">
               Social Media Manager
             </h1>
           </div>
@@ -68,7 +67,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar }) => {
             <input
               type="text"
               placeholder="Search posts, ideas..."
-              className="w-full bg-transparent pl-9 pr-4 font-medium focus:outline-none xl:w-125 border-b border-transparent focus:border-brand-500 transition-colors"
+              className="w-full bg-transparent pl-9 pr-4 font-medium focus:outline-none xl:w-125 border-b border-transparent focus:border-brand-800 transition-colors"
             />
           </div>
         </div>
@@ -76,7 +75,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar }) => {
         <div className="flex items-center gap-3 2xsm:gap-7">
           {/* Notifications */}
           <div className="relative">
-            <button className="relative flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-gray-50 hover:text-brand-600">
+            <button className="relative flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-gray-50 hover:text-brand-800">
               <svg
                 className="h-4 w-4"
                 fill="none"
@@ -111,7 +110,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar }) => {
                 </span>
               </span>
               
-              <span className="h-12 w-12 rounded-full flex items-center justify-center bg-brand-500">
+              <span className="h-12 w-12 rounded-full flex items-center justify-center bg-brand-800">
                 <span className="text-white font-medium text-lg">
                   {user?.first_name?.charAt(0) || 'U'}
                 </span>
@@ -141,7 +140,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar }) => {
               >
                 <ul className="flex flex-col gap-5 border-b border-gray-200 px-6 py-8">
                   <li>
-                    <button className="flex items-center gap-3.5 text-sm font-medium duration-300 ease-in-out hover:text-brand-600 lg:text-base">
+                    <button className="flex items-center gap-3.5 text-sm font-medium duration-300 ease-in-out hover:text-brand-800 lg:text-base">
                       <svg
                         className="fill-current"
                         width="22"
@@ -163,7 +162,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar }) => {
                     </button>
                   </li>
                   <li>
-                    <button className="flex items-center gap-3.5 text-sm font-medium duration-300 ease-in-out hover:text-brand-600 lg:text-base">
+                    <button className="flex items-center gap-3.5 text-sm font-medium duration-300 ease-in-out hover:text-brand-800 lg:text-base">
                       <svg
                         className="fill-current"
                         width="22"
@@ -183,7 +182,7 @@ const TopBar: React.FC<TopBarProps> = ({ toggleSidebar }) => {
                 </ul>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-3.5 py-4 px-6 text-sm font-medium duration-300 ease-in-out hover:text-brand-600 lg:text-base"
+                  className="flex items-center gap-3.5 py-4 px-6 text-sm font-medium duration-300 ease-in-out hover:text-brand-800 lg:text-base"
                 >
                   <svg
                     className="fill-current"

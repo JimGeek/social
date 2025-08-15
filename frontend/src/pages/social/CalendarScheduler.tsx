@@ -187,10 +187,10 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
     switch (status) {
       case 'published': return 'bg-green-100 text-green-800 border-green-200';
       case 'partially_published': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'scheduled': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'scheduled': return 'bg-brand-100 text-brand-800 border-brand-200';
+      case 'draft': return 'bg-brand-100 text-brand-800 border-brand-200';
       case 'failed': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-brand-100 text-brand-800 border-brand-200';
     }
   };
 
@@ -229,19 +229,19 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
       <div className="mb-6 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Calendar Scheduler</h1>
-            <p className="text-gray-600 mt-1">Schedule and manage your social media posts</p>
+            <h1 className="text-3xl font-bold text-brand-900">Calendar Scheduler</h1>
+            <p className="text-brand-600 mt-1">Schedule and manage your social media posts</p>
           </div>
           
           <div className="flex items-center space-x-3">
             {/* View Mode Toggle */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-brand-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('month')}
                 className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                   viewMode === 'month' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-brand-900 shadow-sm' 
+                    : 'text-brand-600 hover:text-brand-900'
                 }`}
               >
                 Month
@@ -250,8 +250,8 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
                 onClick={() => setViewMode('week')}
                 className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                   viewMode === 'week' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-brand-900 shadow-sm' 
+                    : 'text-brand-600 hover:text-brand-900'
                 }`}
               >
                 Week
@@ -262,7 +262,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
             <select
               value={selectedPlatform}
               onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
             >
               <option value="all">All Platforms</option>
               {platforms.map(platform => (
@@ -278,7 +278,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 showOptimalTimes
                   ? 'bg-green-100 text-green-800 border border-green-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-brand-100 text-brand-600 hover:bg-brand-200'
               }`}
             >
               {showOptimalTimes ? '✨ Optimal Times ON' : 'Show Optimal Times'}
@@ -287,7 +287,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
             {/* Create Post Button */}
             <button
               onClick={() => navigate('../create-post')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 transition-colors"
             >
               + Create Post
             </button>
@@ -299,20 +299,20 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => navigateMonth('prev')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-brand-600 hover:text-brand-900 hover:bg-brand-100 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-brand-900">
               {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h2>
             
             <button
               onClick={() => navigateMonth('next')}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-brand-600 hover:text-brand-900 hover:bg-brand-100 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -322,7 +322,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
 
           <button
             onClick={goToToday}
-            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            className="px-3 py-1 text-sm bg-brand-100 text-brand-700 rounded-lg hover:bg-brand-200 transition-colors"
           >
             Today
           </button>
@@ -334,9 +334,9 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
         <div className="xl:col-span-3">
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
             {/* Calendar Header */}
-            <div className="grid grid-cols-7 bg-gray-50">
+            <div className="grid grid-cols-7 bg-brand-50">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="p-3 text-center text-sm font-medium text-gray-700 border-r border-gray-200 last:border-r-0">
+                <div key={day} className="p-3 text-center text-sm font-medium text-brand-700 border-r border-gray-200 last:border-r-0">
                   {day}
                 </div>
               ))}
@@ -348,9 +348,9 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
                 <div
                   key={day.date.toISOString()}
                   className={`min-h-32 p-2 border-r border-b border-gray-200 last:border-r-0 transition-colors ${
-                    day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'
+                    day.isCurrentMonth ? 'bg-white' : 'bg-brand-50'
                   } ${
-                    day.isToday ? 'bg-blue-50' : ''
+                    day.isToday ? 'bg-brand-50' : ''
                   } ${
                     day.isPast ? 'opacity-60' : ''
                   }`}
@@ -358,8 +358,8 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
                   {/* Day number */}
                   <div className={`text-sm font-medium mb-2 ${
                     day.isToday 
-                      ? 'text-blue-600 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center' 
-                      : day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                      ? 'text-brand-800 bg-brand-800 text-white w-6 h-6 rounded-full flex items-center justify-center' 
+                      : day.isCurrentMonth ? 'text-brand-900' : 'text-gray-400'
                   }`}>
                     {day.date.getDate()}
                   </div>
@@ -379,7 +379,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
                   {/* Posts */}
                   <div className="space-y-1">
                     {day.posts.length > 0 && (
-                      <div className="text-xs font-semibold text-blue-600 mb-1">
+                      <div className="text-xs font-semibold text-brand-800 mb-1">
                         📅 {day.posts.length} post{day.posts.length > 1 ? 's' : ''}
                       </div>
                     )}
@@ -387,7 +387,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
                       <div
                         key={post.id}
                         onClick={() => handlePostClick(post)}
-                        className={`p-2 rounded text-xs cursor-pointer transition-all hover:shadow-sm border-l-2 border-l-blue-500 ${
+                        className={`p-2 rounded text-xs cursor-pointer transition-all hover:shadow-sm border-l-2 border-l-brand-800 ${
                           getPostStatusColor(post.status)
                         } ${
                           day.isPast ? 'cursor-not-allowed' : 'cursor-pointer'
@@ -401,7 +401,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
                         )}
                         
                         {/* Post content preview */}
-                        <div className="truncate text-gray-600 mb-1">
+                        <div className="truncate text-brand-600 mb-1">
                           {post.content.substring(0, 30)}...
                         </div>
                         
@@ -436,7 +436,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
         <div className="space-y-6 max-h-[calc(100vh-16rem)] overflow-y-auto">
           {/* Unscheduled Posts */}
           <div className="bg-white rounded-lg shadow-sm border p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Draft Posts</h3>
+            <h3 className="font-semibold text-brand-900 mb-3">Draft Posts</h3>
             
             <div className="space-y-2 min-h-16 p-2 rounded-lg border-2 border-dashed border-gray-200">
               {unscheduledPosts.length === 0 ? (
@@ -451,9 +451,9 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
                   <div
                     key={post.id}
                     onClick={() => handlePostClick(post)}
-                    className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="p-3 bg-brand-50 rounded-lg cursor-pointer hover:bg-brand-100 transition-colors"
                   >
-                    <div className="text-sm text-gray-900 font-medium mb-2">
+                    <div className="text-sm text-brand-900 font-medium mb-2">
                       {post.content.substring(0, 40)}...
                     </div>
                     <div className="flex items-center justify-between">
@@ -476,23 +476,23 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
 
           {/* Quick Actions */}
           <div className="bg-white rounded-lg shadow-sm border p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Quick Actions</h3>
+            <h3 className="font-semibold text-brand-900 mb-3">Quick Actions</h3>
             <div className="space-y-2">
               <button
                 onClick={() => navigate('../create-post')}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                className="w-full text-left px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
               >
                 📝 Create New Post
               </button>
               <button
                 onClick={() => navigate('../ideas')}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                className="w-full text-left px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
               >
                 💡 Browse Ideas
               </button>
               <button
                 onClick={() => navigate('../analytics')}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                className="w-full text-left px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
               >
                 📊 View Analytics
               </button>
@@ -501,23 +501,23 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
 
           {/* Stats */}
           <div className="bg-white rounded-lg shadow-sm border p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">This Month</h3>
+            <h3 className="font-semibold text-brand-900 mb-3">This Month</h3>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Scheduled</span>
-                <span className="text-sm font-medium text-blue-600">
+                <span className="text-sm text-brand-600">Scheduled</span>
+                <span className="text-sm font-medium text-brand-800">
                   {posts.filter(p => p.status === 'scheduled').length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Published</span>
+                <span className="text-sm text-brand-600">Published</span>
                 <span className="text-sm font-medium text-green-600">
                   {posts.filter(p => p.status === 'published').length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Drafts</span>
-                <span className="text-sm font-medium text-gray-600">
+                <span className="text-sm text-brand-600">Drafts</span>
+                <span className="text-sm font-medium text-brand-600">
                   {posts.filter(p => p.status === 'draft').length}
                 </span>
               </div>
@@ -534,7 +534,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
               <h3 className="text-lg font-semibold">Post Details</h3>
               <button
                 onClick={() => setShowPostModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-brand-600"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -544,14 +544,14 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 text-sm">
+                <label className="block text-sm font-medium text-brand-700 mb-1">Content</label>
+                <div className="p-3 border border-gray-200 rounded-lg bg-brand-50 text-sm">
                   {selectedPost.content}
                 </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Platforms</label>
+                <label className="block text-sm font-medium text-brand-700 mb-1">Platforms</label>
                 <div className="flex space-x-2">
                   {selectedPost.targets.map((target, idx) => (
                     <div key={idx} className="flex items-center space-x-1">
@@ -566,7 +566,7 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-brand-700 mb-1">Status</label>
                 <div className="flex items-center space-x-2">
                   <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${getPostStatusColor(selectedPost.status)}`}>
                     {selectedPost.status.toUpperCase()}
@@ -581,8 +581,8 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
               
               {selectedPost.scheduled_at && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Time</label>
-                  <div className="text-sm text-gray-600">
+                  <label className="block text-sm font-medium text-brand-700 mb-1">Scheduled Time</label>
+                  <div className="text-sm text-brand-600">
                     {new Date(selectedPost.scheduled_at).toLocaleString()}
                   </div>
                 </div>
@@ -615,21 +615,21 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
                   <>
                     <button
                       onClick={() => navigate(`../posts/${selectedPost.id}`)}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="flex-1 px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 transition-colors"
                     >
                       Edit Post
                     </button>
                     {selectedPost.scheduled_at ? (
                       <button
                         onClick={() => handleUnschedulePost(selectedPost.id)}
-                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex-1 px-4 py-2 border border-gray-300 text-brand-700 rounded-lg hover:bg-brand-50 transition-colors"
                       >
                         Unschedule
                       </button>
                     ) : (
                       <button
                         onClick={() => navigate(`../create-post?duplicate=${selectedPost.id}`)}
-                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex-1 px-4 py-2 border border-gray-300 text-brand-700 rounded-lg hover:bg-brand-50 transition-colors"
                       >
                         Schedule
                       </button>

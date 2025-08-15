@@ -59,7 +59,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
       id: 'in_progress',
       title: 'In Progress',
       status: 'in_progress',
-      color: 'bg-blue-100',
+      color: 'bg-brand-100',
       ideas: ideas.filter(idea => idea.status === 'in_progress')
     },
     {
@@ -227,7 +227,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
   const getPriorityColor = (priority: number) => {
     switch (priority) {
       case 1: return 'text-gray-500';
-      case 2: return 'text-blue-500';
+      case 2: return 'text-brand-800';
       case 3: return 'text-yellow-500';
       case 4: return 'text-orange-500';
       case 5: return 'text-red-500';
@@ -299,7 +299,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
             
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 transition-colors"
             >
               + New Idea
             </button>
@@ -314,14 +314,14 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search ideas..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
             />
           </div>
           
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
           >
             <option value="all">All Categories</option>
             {categories.map(category => (
@@ -390,7 +390,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                   {idea.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-3">
                       {idea.tags.slice(0, 3).map((tag, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                        <span key={idx} className="px-2 py-1 bg-brand-100 text-brand-800 text-xs rounded-full">
                           #{tag}
                         </span>
                       ))}
@@ -454,7 +454,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                   type="text"
                   value={newIdea.title}
                   onChange={(e) => setNewIdea(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                   placeholder="Enter idea title..."
                 />
               </div>
@@ -465,7 +465,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                   value={newIdea.description}
                   onChange={(e) => setNewIdea(prev => ({ ...prev, description: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                   placeholder="Describe your idea..."
                 />
               </div>
@@ -476,7 +476,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                   value={newIdea.content_draft}
                   onChange={(e) => setNewIdea(prev => ({ ...prev, content_draft: e.target.value }))}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                   placeholder="Draft your content..."
                 />
               </div>
@@ -487,7 +487,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                   type="text"
                   value={newIdea.category}
                   onChange={(e) => setNewIdea(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                   placeholder="e.g., promotional, educational, behind-the-scenes"
                 />
               </div>
@@ -497,7 +497,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                 <select
                   value={newIdea.priority}
                   onChange={(e) => setNewIdea(prev => ({ ...prev, priority: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                 >
                   <option value={1}>Low</option>
                   <option value={2}>Normal</option>
@@ -517,7 +517,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                 <button
                   onClick={handleCreateIdea}
                   disabled={!newIdea.title.trim()}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 disabled:opacity-50 transition-colors"
                 >
                   Create Idea
                 </button>
@@ -550,7 +550,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                   type="text"
                   value={aiRequest.business_type}
                   onChange={(e) => setAiRequest(prev => ({ ...prev, business_type: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                   placeholder="e.g., construction, home improvement"
                 />
               </div>
@@ -560,7 +560,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                 <select
                   value={aiRequest.platform}
                   onChange={(e) => setAiRequest(prev => ({ ...prev, platform: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                 >
                   {platforms.map(platform => (
                     <option key={platform.id} value={platform.name}>
@@ -575,7 +575,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                 <select
                   value={aiRequest.count}
                   onChange={(e) => setAiRequest(prev => ({ ...prev, count: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
                 >
                   <option value={3}>3 ideas</option>
                   <option value={5}>5 ideas</option>
@@ -659,7 +659,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
                   <div className="flex flex-wrap gap-1">
                     {selectedIdea.tags.map((tag, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                      <span key={idx} className="px-2 py-1 bg-brand-100 text-brand-800 text-xs rounded-full">
                         #{tag}
                       </span>
                     ))}
@@ -676,7 +676,7 @@ const IdeasBoard: React.FC<IdeasBoardProps> = () => {
                 </button>
                 <button
                   onClick={() => handleConvertToPost(selectedIdea.id)}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 transition-colors"
                 >
                   Convert to Post
                 </button>

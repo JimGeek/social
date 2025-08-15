@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Social Manager",
+  "name": "Social Media Manager - Professional Social Media Management Platform",
+  "description": "Schedule, manage and analyze your social media posts across Instagram, LinkedIn, Facebook and more.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +9,32 @@
       "type": "image/x-icon"
     },
     {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    },
+    {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait-primary",
+  "theme_color": "#2b3539",
+  "background_color": "#fefdfc",
+  "categories": ["productivity", "business", "social"]
 }

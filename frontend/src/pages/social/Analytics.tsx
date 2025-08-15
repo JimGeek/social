@@ -347,7 +347,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         ),
-        color: 'text-blue-600'
+        color: 'text-brand-800'
       },
       {
         title: 'Total Engagement',
@@ -431,8 +431,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Analytics & Reports</h1>
-            <p className="text-gray-600 mt-1">Track your social media performance and insights</p>
+            <h1 className="text-3xl font-bold text-brand-900">Analytics & Reports</h1>
+            <p className="text-brand-600 mt-1">Track your social media performance and insights</p>
           </div>
           
           <div className="flex items-center space-x-3">
@@ -440,7 +440,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
             >
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
@@ -452,7 +452,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
             <select
               value={selectedPlatform}
               onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-800"
             >
               <option value="all">All Platforms</option>
               {platforms
@@ -468,7 +468,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
             <button 
               onClick={handleSyncAnalytics}
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 disabled:opacity-50 transition-colors flex items-center space-x-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -504,8 +504,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-brand-800 text-brand-800'
+                    : 'border-transparent text-brand-600 hover:text-brand-700 hover:border-gray-300'
                 }`}
               >
                 {tab.label}
@@ -524,8 +524,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
               <div key={index} className="bg-white rounded-lg shadow-sm border p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
+                    <p className="text-sm font-medium text-brand-600">{card.title}</p>
+                    <p className="text-2xl font-bold text-brand-900 mt-1">{card.value}</p>
                   </div>
                   <div className={`${card.color}`}>
                     {card.icon}
@@ -535,7 +535,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                   <span className={`text-sm font-medium ${card.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {card.change >= 0 ? '+' : ''}{card.change}%
                   </span>
-                  <span className="text-sm text-gray-500 ml-2">{card.changeLabel}</span>
+                  <span className="text-sm text-brand-600 ml-2">{card.changeLabel}</span>
                 </div>
               </div>
             ))}
@@ -545,31 +545,31 @@ const Analytics: React.FC<AnalyticsProps> = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Platform Breakdown */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Platform Performance</h3>
+              <h3 className="text-lg font-semibold text-brand-900 mb-4">Platform Performance</h3>
               <div className="space-y-4">
                 {platformAnalytics.map((analytics, index) => {
                   const platform = platforms.find(p => p.name === analytics.platform);
                   return (
-                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-4 bg-brand-50 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div 
                           className="w-4 h-4 rounded-full"
                           style={{ backgroundColor: getPlatformColor(analytics.platform) }}
                         />
                         <div>
-                          <p className="font-medium text-gray-900">
+                          <p className="font-medium text-brand-900">
                             {platform?.display_name || analytics.platform}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-brand-600">
                             {analytics.posts_count || 0} posts
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-brand-900">
                           {(analytics.engagement_rate || 0).toFixed(1)}%
                         </p>
-                        <p className="text-sm text-gray-500">engagement</p>
+                        <p className="text-sm text-brand-600">engagement</p>
                       </div>
                     </div>
                   );
@@ -579,17 +579,17 @@ const Analytics: React.FC<AnalyticsProps> = () => {
 
             {/* Recent Activity */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+              <h3 className="text-lg font-semibold text-brand-900 mb-4">Recent Activity</h3>
               <div className="space-y-4">
                 {summary?.recent_activity && summary.recent_activity.length > 0 ? 
                   summary.recent_activity.slice(0, 5).map((activity, index) => (
                     <div key={index} className="flex items-center space-x-3">
-                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      <div className="w-2 h-2 rounded-full bg-brand-500" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-brand-900">
                           Post published: {activity.content}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-brand-600">
                           {activity.platform} • {activity.published_at ? new Date(activity.published_at).toLocaleDateString() : 'Recently'}
                         </p>
                         <div className="text-xs text-gray-400 mt-1">
@@ -598,7 +598,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                       </div>
                     </div>
                   )) : (
-                    <div className="text-center py-6 text-gray-500">
+                    <div className="text-center py-6 text-brand-600">
                       <svg className="mx-auto h-8 w-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
@@ -606,7 +606,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                       <p className="text-xs mt-1">Publish some posts to see activity here</p>
                       <button 
                         onClick={handleSyncAnalytics}
-                        className="mt-2 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        className="mt-2 px-3 py-1 text-xs bg-brand-800 text-white rounded hover:bg-brand-900 transition-colors"
                       >
                         Sync Data
                       </button>
@@ -649,10 +649,10 @@ const Analytics: React.FC<AnalyticsProps> = () => {
           {/* Top Performing Content */}
           {summary?.top_performing_post && (
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Performing Post</h3>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-gray-900 mb-3">{summary.top_performing_post.content}</p>
-                <div className="flex items-center space-x-6 text-sm text-gray-600">
+              <h3 className="text-lg font-semibold text-brand-900 mb-4">Top Performing Post</h3>
+              <div className="bg-brand-50 p-4 rounded-lg">
+                <p className="text-brand-900 mb-3">{summary.top_performing_post.content}</p>
+                <div className="flex items-center space-x-6 text-sm text-brand-600">
                   <div className="flex items-center space-x-1">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -698,20 +698,20 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: getPlatformColor(platform) }}
                       />
-                      <span className="text-sm font-medium text-gray-600 capitalize">{platform}</span>
+                      <span className="text-sm font-medium text-brand-600 capitalize">{platform}</span>
                     </div>
                     <div className="space-y-2">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900">{data.total_posts}</p>
-                        <p className="text-xs text-gray-500">Posts</p>
+                        <p className="text-2xl font-bold text-brand-900">{data.total_posts}</p>
+                        <p className="text-xs text-brand-600">Posts</p>
                       </div>
                       <div>
-                        <p className="text-lg font-semibold text-blue-600">{(data.avg_engagement_rate || 0).toFixed(1)}%</p>
-                        <p className="text-xs text-gray-500">Avg. Engagement</p>
+                        <p className="text-lg font-semibold text-brand-800">{(data.avg_engagement_rate || 0).toFixed(1)}%</p>
+                        <p className="text-xs text-brand-600">Avg. Engagement</p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">{data.total_reach.toLocaleString()}</p>
-                        <p className="text-xs text-gray-500">Total Reach</p>
+                        <p className="text-sm font-medium text-brand-700">{data.total_reach.toLocaleString()}</p>
+                        <p className="text-xs text-brand-600">Total Reach</p>
                       </div>
                     </div>
                   </div>
@@ -720,14 +720,14 @@ const Analytics: React.FC<AnalyticsProps> = () => {
 
               {/* Top Performing Posts */}
               <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Performing Posts</h3>
+                <h3 className="text-lg font-semibold text-brand-900 mb-4">Top Performing Posts</h3>
                 <div className="space-y-4">
                   {postPerformanceData.posts && postPerformanceData.posts.length > 0 ? postPerformanceData.posts.slice(0, 5).map((post) => (
                     <div key={post.id} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <p className="text-gray-900 mb-2 line-clamp-2">{post.content}</p>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          <p className="text-brand-900 mb-2 line-clamp-2">{post.content}</p>
+                          <div className="flex items-center space-x-4 text-sm text-brand-600">
                             <span className="capitalize flex items-center space-x-1">
                               <div 
                                 className="w-2 h-2 rounded-full"
@@ -739,36 +739,36 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                           </div>
                         </div>
                         <div className="text-right ml-4">
-                          <p className="text-lg font-bold text-blue-600">{(post.engagement_rate || 0).toFixed(1)}%</p>
-                          <p className="text-xs text-gray-500">Engagement</p>
+                          <p className="text-lg font-bold text-brand-800">{(post.engagement_rate || 0).toFixed(1)}%</p>
+                          <p className="text-xs text-brand-600">Engagement</p>
                         </div>
                       </div>
                       
                       <div className="grid grid-cols-4 gap-4 pt-3 border-t">
                         <div className="text-center">
-                          <p className="font-semibold text-gray-900">{post.likes}</p>
-                          <p className="text-xs text-gray-500">Likes</p>
+                          <p className="font-semibold text-brand-900">{post.likes}</p>
+                          <p className="text-xs text-brand-600">Likes</p>
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-gray-900">{post.comments}</p>
-                          <p className="text-xs text-gray-500">Comments</p>
+                          <p className="font-semibold text-brand-900">{post.comments}</p>
+                          <p className="text-xs text-brand-600">Comments</p>
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-gray-900">{post.shares}</p>
-                          <p className="text-xs text-gray-500">Shares</p>
+                          <p className="font-semibold text-brand-900">{post.shares}</p>
+                          <p className="text-xs text-brand-600">Shares</p>
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-gray-900">{post.reach}</p>
-                          <p className="text-xs text-gray-500">Reach</p>
+                          <p className="font-semibold text-brand-900">{post.reach}</p>
+                          <p className="text-xs text-brand-600">Reach</p>
                         </div>
                       </div>
                     </div>
                   )) : (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-brand-600">
                       <p>No posts available for the selected period</p>
                       <button 
                         onClick={handleSyncAnalytics}
-                        className="mt-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        className="mt-2 px-3 py-1 text-sm bg-brand-800 text-white rounded hover:bg-brand-900 transition-colors"
                       >
                         Sync Data
                       </button>
@@ -780,13 +780,13 @@ const Analytics: React.FC<AnalyticsProps> = () => {
               {/* Engagement Trends Chart */}
               {postPerformanceData.engagement_trends && postPerformanceData.engagement_trends.length > 0 && (
                 <div className="bg-white rounded-lg shadow-sm border p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Engagement Trends</h3>
+                  <h3 className="text-lg font-semibold text-brand-900 mb-4">Engagement Trends</h3>
                   <div className="space-y-4">
                     {postPerformanceData.engagement_trends.slice(-7).map((trend, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={index} className="flex items-center justify-between p-3 bg-brand-50 rounded-lg">
                         <div>
-                          <p className="font-medium text-gray-900">{new Date(trend.date).toLocaleDateString()}</p>
-                          <p className="text-sm text-gray-600">{(trend.engagement_rate || 0).toFixed(1)}% engagement rate</p>
+                          <p className="font-medium text-brand-900">{new Date(trend.date).toLocaleDateString()}</p>
+                          <p className="text-sm text-brand-600">{(trend.engagement_rate || 0).toFixed(1)}% engagement rate</p>
                         </div>
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="flex items-center space-x-1">
@@ -794,7 +794,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                             <span>{trend.likes} likes</span>
                           </span>
                           <span className="flex items-center space-x-1">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <div className="w-2 h-2 bg-brand-500 rounded-full"></div>
                             <span>{trend.comments} comments</span>
                           </span>
                           <span className="flex items-center space-x-1">
@@ -810,7 +810,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
             </>
           ) : (
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-brand-600">
                 <svg className="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
@@ -818,7 +818,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                 <p className="text-sm">Sync your analytics data to see detailed post performance metrics</p>
                 <button 
                   onClick={handleSyncAnalytics}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="mt-4 px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 transition-colors"
                 >
                   Sync Analytics Data
                 </button>
@@ -846,7 +846,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
             <>
               {/* Best Posting Times Analysis */}
               <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Best Posting Times</h3>
+                <h3 className="text-lg font-semibold text-brand-900 mb-4">Best Posting Times</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {engagementAnalysisData.best_posting_times && Object.entries(engagementAnalysisData.best_posting_times).map(([platform, times]) => {
                     const platformInfo = platforms.find(p => p.name === platform);
@@ -856,7 +856,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                     
                     return (
                       <div key={platform} className="border rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 mb-3 flex items-center space-x-2">
+                        <h4 className="font-medium text-brand-900 mb-3 flex items-center space-x-2">
                           <div 
                             className="w-4 h-4 rounded-full"
                             style={{ backgroundColor: getPlatformColor(platform) }}
@@ -879,18 +879,18 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                         </div>
                         
                         <div className="space-y-2">
-                          <h5 className="text-sm font-medium text-gray-700">Hourly Performance</h5>
+                          <h5 className="text-sm font-medium text-brand-700">Hourly Performance</h5>
                           {times.slice(0, 5).map((time, index) => (
                             <div key={index} className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">{time.hour}:00</span>
+                              <span className="text-brand-600">{time.hour}:00</span>
                               <div className="flex items-center space-x-2">
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
                                   <div 
-                                    className="bg-blue-500 h-2 rounded-full"
+                                    className="bg-brand-500 h-2 rounded-full"
                                     style={{ width: `${Math.min(100, (time.engagement_rate / bestTime.engagement_rate) * 100)}%` }}
                                   />
                                 </div>
-                                <span className="text-gray-700 w-12 text-right">
+                                <span className="text-brand-700 w-12 text-right">
                                   {(time.engagement_rate || 0).toFixed(1)}%
                                 </span>
                               </div>
@@ -905,27 +905,27 @@ const Analytics: React.FC<AnalyticsProps> = () => {
 
               {/* Content Type Performance */}
               <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Content Type Performance</h3>
+                <h3 className="text-lg font-semibold text-brand-900 mb-4">Content Type Performance</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {engagementAnalysisData.engagement_by_content_type && Object.entries(engagementAnalysisData.engagement_by_content_type).map(([type, data]) => (
                     <div key={type} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium text-gray-900 capitalize">{type.replace('_', ' ')}</h4>
-                        <span className="text-sm text-gray-500">{data.post_count} posts</span>
+                        <h4 className="font-medium text-brand-900 capitalize">{type.replace('_', ' ')}</h4>
+                        <span className="text-sm text-brand-600">{data.post_count} posts</span>
                       </div>
                       
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Engagement Rate</span>
-                          <span className="font-semibold text-blue-600">{(data.engagement_rate || 0).toFixed(1)}%</span>
+                          <span className="text-sm text-brand-600">Engagement Rate</span>
+                          <span className="font-semibold text-brand-800">{(data.engagement_rate || 0).toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Avg. Likes</span>
-                          <span className="text-gray-700">{Math.round(data.avg_likes)}</span>
+                          <span className="text-sm text-brand-600">Avg. Likes</span>
+                          <span className="text-brand-700">{Math.round(data.avg_likes)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Avg. Comments</span>
-                          <span className="text-gray-700">{Math.round(data.avg_comments)}</span>
+                          <span className="text-sm text-brand-600">Avg. Comments</span>
+                          <span className="text-brand-700">{Math.round(data.avg_comments)}</span>
                         </div>
                       </div>
                     </div>
@@ -935,13 +935,13 @@ const Analytics: React.FC<AnalyticsProps> = () => {
 
               {/* Trending Hashtags */}
               <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Trending Hashtags</h3>
+                <h3 className="text-lg font-semibold text-brand-900 mb-4">Trending Hashtags</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {engagementAnalysisData.trending_hashtags && Object.entries(engagementAnalysisData.trending_hashtags).map(([platform, hashtags]) => {
                     const platformInfo = platforms.find(p => p.name === platform);
                     return (
                       <div key={platform}>
-                        <h4 className="font-medium text-gray-900 mb-3 flex items-center space-x-2">
+                        <h4 className="font-medium text-brand-900 mb-3 flex items-center space-x-2">
                           <div 
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: getPlatformColor(platform) }}
@@ -951,9 +951,9 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                         
                         <div className="space-y-2">
                           {hashtags.slice(0, 8).map((hashtag, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                              <span className="text-blue-700 font-medium">{hashtag.hashtag}</span>
-                              <div className="text-right text-xs text-gray-600">
+                            <div key={index} className="flex items-center justify-between p-2 bg-brand-50 rounded">
+                              <span className="text-brand-800 font-medium">{hashtag.hashtag}</span>
+                              <div className="text-right text-xs text-brand-600">
                                 <div>Used {hashtag.usage_count} times</div>
                                 <div>{(hashtag.avg_engagement || 0).toFixed(0)} avg. engagement</div>
                               </div>
@@ -969,16 +969,16 @@ const Analytics: React.FC<AnalyticsProps> = () => {
               {/* Audience Activity Patterns */}
               {engagementAnalysisData.audience_insights && (
                 <div className="bg-white rounded-lg shadow-sm border p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Audience Activity Patterns</h3>
+                  <h3 className="text-lg font-semibold text-brand-900 mb-4">Audience Activity Patterns</h3>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
-                      <h4 className="font-medium text-gray-800 mb-3">Peak Activity Days</h4>
+                      <h4 className="font-medium text-brand-800 mb-3">Peak Activity Days</h4>
                       <div className="flex flex-wrap gap-2">
                         {engagementAnalysisData.audience_insights.peak_activity_days.map((day, index) => (
                           <span 
                             key={index}
-                            className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                            className="px-3 py-1 bg-brand-100 text-brand-800 text-sm rounded-full"
                           >
                             {day}
                           </span>
@@ -987,11 +987,11 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                     </div>
                     
                     <div>
-                      <h4 className="font-medium text-gray-800 mb-3">Best Engagement Patterns</h4>
+                      <h4 className="font-medium text-brand-800 mb-3">Best Engagement Patterns</h4>
                       <div className="space-y-2">
                         {engagementAnalysisData.audience_insights.engagement_patterns.slice(0, 5).map((pattern, index) => (
                           <div key={index} className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">{pattern.day} at {pattern.hour}:00</span>
+                            <span className="text-brand-600">{pattern.day} at {pattern.hour}:00</span>
                             <span className="font-medium text-green-600">
                               {(pattern.engagement_rate || 0).toFixed(1)}%
                             </span>
@@ -1006,12 +1006,12 @@ const Analytics: React.FC<AnalyticsProps> = () => {
               {/* Content Recommendations */}
               {engagementAnalysisData.content_recommendations && engagementAnalysisData.content_recommendations.length > 0 && (
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Content Recommendations</h3>
+                  <h3 className="text-lg font-semibold text-brand-900 mb-4">AI Content Recommendations</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {engagementAnalysisData.content_recommendations.slice(0, 4).map((rec, index) => (
                       <div key={index} className="bg-white p-4 rounded-lg border">
-                        <h4 className="font-medium text-gray-900 mb-2 capitalize">{rec.type} Content</h4>
-                        <p className="text-sm text-gray-700 mb-2">{rec.suggestion}</p>
+                        <h4 className="font-medium text-brand-900 mb-2 capitalize">{rec.type} Content</h4>
+                        <p className="text-sm text-brand-700 mb-2">{rec.suggestion}</p>
                         <p className="text-xs text-green-600 font-medium">
                           💡 {rec.potential_improvement}
                         </p>
@@ -1023,7 +1023,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
             </>
           ) : (
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-brand-600">
                 <svg className="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
@@ -1031,7 +1031,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                 <p className="text-sm">Sync your analytics data to see detailed engagement insights</p>
                 <button 
                   onClick={handleSyncAnalytics}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="mt-4 px-4 py-2 bg-brand-800 text-white rounded-lg hover:bg-brand-900 transition-colors"
                 >
                   Sync Analytics Data
                 </button>
@@ -1051,7 +1051,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                <h3 className="text-lg font-semibold text-gray-900">AI-Powered Insights</h3>
+                <h3 className="text-lg font-semibold text-brand-900">AI-Powered Insights</h3>
               </div>
               {(activeTab === 'insights' && !engagementAnalysisData) && (
                 <button 
@@ -1081,8 +1081,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                   if (!times || times.length === 0) {
                     return (
                       <div key={platform} className="bg-white p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-2">⏰ Optimal Timing</h4>
-                        <p className="text-sm text-gray-600">
+                        <h4 className="font-medium text-brand-900 mb-2">⏰ Optimal Timing</h4>
+                        <p className="text-sm text-brand-600">
                           Sync your analytics data to discover your optimal posting times for better engagement.
                         </p>
                       </div>
@@ -1095,8 +1095,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                   
                   return (
                     <div key={platform} className="bg-white p-4 rounded-lg">
-                      <h4 className="font-medium text-gray-900 mb-2">⏰ Optimal Timing</h4>
-                      <p className="text-sm text-gray-600">
+                      <h4 className="font-medium text-brand-900 mb-2">⏰ Optimal Timing</h4>
+                      <p className="text-sm text-brand-600">
                         Your {platform} posts perform {(bestTime.engagement_rate || 0).toFixed(1)}% better at {bestTime.hour}:00. 
                         Schedule more content during this peak engagement hour.
                       </p>
@@ -1110,8 +1110,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                       Object.keys(engagementAnalysisData.engagement_by_content_type).length === 0) {
                     return (
                       <div className="bg-white p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-2">🎯 Content Strategy</h4>
-                        <p className="text-sm text-gray-600">
+                        <h4 className="font-medium text-brand-900 mb-2">🎯 Content Strategy</h4>
+                        <p className="text-sm text-brand-600">
                           Sync your analytics data to get personalized content strategy recommendations based on your performance.
                         </p>
                       </div>
@@ -1125,8 +1125,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                   
                   return (
                     <div className="bg-white p-4 rounded-lg">
-                      <h4 className="font-medium text-gray-900 mb-2">🎯 Content Strategy</h4>
-                      <p className="text-sm text-gray-600">
+                      <h4 className="font-medium text-brand-900 mb-2">🎯 Content Strategy</h4>
+                      <p className="text-sm text-brand-600">
                         {bestContentType[0].replace('_', ' ')} content gets {(bestContentType[1].engagement_rate || 0).toFixed(1)}% engagement rate. 
                         Focus on creating more {bestContentType[0].replace('_', ' ')} posts to boost performance.
                       </p>
@@ -1139,8 +1139,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                   if (!hashtags || hashtags.length === 0) {
                     return (
                       <div key={platform} className="bg-white p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-2">🏷️ Hashtag Strategy</h4>
-                        <p className="text-sm text-gray-600">
+                        <h4 className="font-medium text-brand-900 mb-2">🏷️ Hashtag Strategy</h4>
+                        <p className="text-sm text-brand-600">
                           Sync your analytics data to discover trending hashtags that boost your reach and engagement.
                         </p>
                       </div>
@@ -1150,8 +1150,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                   const topHashtag = hashtags[0];
                   return (
                     <div key={platform} className="bg-white p-4 rounded-lg">
-                      <h4 className="font-medium text-gray-900 mb-2">🏷️ Hashtag Strategy</h4>
-                      <p className="text-sm text-gray-600">
+                      <h4 className="font-medium text-brand-900 mb-2">🏷️ Hashtag Strategy</h4>
+                      <p className="text-sm text-brand-600">
                         {topHashtag?.hashtag} is your top performing hashtag with {(topHashtag?.avg_engagement || 0).toFixed(0)} avg. engagement. 
                         Use similar trending hashtags to increase your reach.
                       </p>
@@ -1162,8 +1162,8 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                 {/* Activity Pattern Insight */}
                 {engagementAnalysisData.audience_insights && engagementAnalysisData.audience_insights.peak_activity_days && engagementAnalysisData.audience_insights.peak_activity_days.length > 0 && (
                   <div className="bg-white p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">📈 Audience Activity</h4>
-                    <p className="text-sm text-gray-600">
+                    <h4 className="font-medium text-brand-900 mb-2">📈 Audience Activity</h4>
+                    <p className="text-sm text-brand-600">
                       Your audience is most active on {engagementAnalysisData.audience_insights.peak_activity_days.slice(0, 2).join(' and ')}. 
                       Consider posting more frequently on these days for better visibility.
                     </p>
@@ -1173,26 +1173,26 @@ const Analytics: React.FC<AnalyticsProps> = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">📈 Performance Insight</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-brand-900 mb-2">📈 Performance Insight</h4>
+                  <p className="text-sm text-brand-600">
                     Sync your analytics data to get personalized insights about your posting performance and optimal timing.
                   </p>
                 </div>
                 <div className="bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">🎯 Content Recommendations</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-brand-900 mb-2">🎯 Content Recommendations</h4>
+                  <p className="text-sm text-brand-600">
                     Get AI-powered content recommendations based on your audience engagement patterns and preferences.
                   </p>
                 </div>
                 <div className="bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">🏷️ Hashtag Strategy</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-brand-900 mb-2">🏷️ Hashtag Strategy</h4>
+                  <p className="text-sm text-brand-600">
                     Discover trending hashtags and optimal hashtag strategies based on your content performance.
                   </p>
                 </div>
                 <div className="bg-white p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">⏰ Posting Schedule</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-brand-900 mb-2">⏰ Posting Schedule</h4>
+                  <p className="text-sm text-brand-600">
                     Find your audience's peak activity times and optimize your posting schedule for maximum engagement.
                   </p>
                 </div>
@@ -1202,7 +1202,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
 
           {/* Data-Driven Recommendations */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Data-Driven Recommendations</h3>
+            <h3 className="text-lg font-semibold text-brand-900 mb-4">Data-Driven Recommendations</h3>
             
             {engagementAnalysisData?.content_recommendations ? (
               <div className="space-y-4">
@@ -1212,13 +1212,13 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                       index < 2 ? 'bg-red-500' : index < 4 ? 'bg-yellow-500' : 'bg-green-500'
                     }`} />
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 capitalize">{rec.type} Content Strategy</h4>
-                      <p className="text-sm text-gray-600 mt-1">{rec.suggestion}</p>
+                      <h4 className="font-medium text-brand-900 capitalize">{rec.type} Content Strategy</h4>
+                      <p className="text-sm text-brand-600 mt-1">{rec.suggestion}</p>
                       <p className="text-xs text-green-600 mt-2 font-medium">💡 {rec.potential_improvement}</p>
                     </div>
                     <button 
                       onClick={() => navigate('/marvel-homes/social/posts')}
-                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      className="px-3 py-1 text-sm bg-brand-800 text-white rounded hover:bg-brand-900 transition-colors"
                     >
                       Create Content
                     </button>
@@ -1254,12 +1254,12 @@ const Analytics: React.FC<AnalyticsProps> = () => {
                       'bg-green-500'
                     }`} />
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{recommendation.title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">{recommendation.description}</p>
+                      <h4 className="font-medium text-brand-900">{recommendation.title}</h4>
+                      <p className="text-sm text-brand-600 mt-1">{recommendation.description}</p>
                     </div>
                     <button 
                       onClick={recommendation.action === 'Sync Now' ? handleSyncAnalytics : () => {}}
-                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      className="px-3 py-1 text-sm bg-brand-800 text-white rounded hover:bg-brand-900 transition-colors"
                     >
                       {recommendation.action}
                     </button>
@@ -1272,26 +1272,26 @@ const Analytics: React.FC<AnalyticsProps> = () => {
           {/* Performance Summary */}
           {summary && (
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Summary ({getDateRangeLabel(dateRange)})</h3>
+              <h3 className="text-lg font-semibold text-brand-900 mb-4">Performance Summary ({getDateRangeLabel(dateRange)})</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">{summary.total_posts || 0}</div>
-                  <div className="text-sm text-gray-600">Total Posts</div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-3xl font-bold text-brand-800 mb-2">{summary.total_posts || 0}</div>
+                  <div className="text-sm text-brand-600">Total Posts</div>
+                  <div className="text-xs text-brand-600 mt-1">
                     {summary.total_posts > 0 ? 'Great activity!' : 'Time to post more content'}
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-600 mb-2">{(summary.total_engagement || 0).toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">Total Engagement</div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-sm text-brand-600">Total Engagement</div>
+                  <div className="text-xs text-brand-600 mt-1">
                     {summary.total_engagement > 50 ? 'Strong engagement!' : 'Room for improvement'}
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-purple-600 mb-2">{(summary.engagement_rate || 0).toFixed(1)}%</div>
-                  <div className="text-sm text-gray-600">Engagement Rate</div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-sm text-brand-600">Engagement Rate</div>
+                  <div className="text-xs text-brand-600 mt-1">
                     {(summary.engagement_rate || 0) > 3 ? 'Excellent rate!' : 'Focus on quality content'}
                   </div>
                 </div>
@@ -1301,7 +1301,7 @@ const Analytics: React.FC<AnalyticsProps> = () => {
 
           {/* Quick Actions */}
           <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border border-green-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <h3 className="text-lg font-semibold text-brand-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button 
                 onClick={handleSyncAnalytics}
@@ -1316,12 +1316,12 @@ const Analytics: React.FC<AnalyticsProps> = () => {
               
               <button 
                 onClick={() => navigate('/marvel-homes/social/posts')}
-                className="flex items-center justify-center space-x-2 p-4 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+                className="flex items-center justify-center space-x-2 p-4 bg-white border border-brand-300 rounded-lg hover:bg-brand-50 transition-colors"
               >
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-brand-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span className="font-medium text-blue-700">Create Post</span>
+                <span className="font-medium text-brand-800">Create Post</span>
               </button>
               
               <button 
