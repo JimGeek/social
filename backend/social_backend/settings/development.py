@@ -13,8 +13,8 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-development-secret-ke
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# Allowed hosts for development
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+# Allowed hosts for development (including Docker host for monitoring)
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'host.docker.internal']
 
 # Database - SQLite for development (easy setup)
 DATABASES = {
@@ -48,26 +48,54 @@ FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 BACKEND_URL = config('BACKEND_URL', default='http://localhost:8000')
 
 # Development logging
+import os
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'django_errors.log',
+            'level': 'ERROR',
+            'formatter': 'verbose',
         },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'file'],
         'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file', 'error_file'],
             'level': 'INFO',
             'propagate': False,
         },
         'social': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console', 'file', 'error_file'],
             'level': 'DEBUG',
             'propagate': False,
         },

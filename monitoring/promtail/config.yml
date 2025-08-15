@@ -1,0 +1,124 @@
+# Production Promtail Configuration
+# Multi-project log collection
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Social Media Manager Project Logs
+  - job_name: social-media-django
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: social-media
+          service: django
+          project: social-media-manager
+          __path__: /logs/social-api/django*.log
+
+  - job_name: social-media-celery
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: social-media
+          service: celery
+          project: social-media-manager
+          __path__: /logs/social-api/celery*.log
+
+  - job_name: social-media-gunicorn
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: social-media
+          service: gunicorn
+          project: social-media-manager
+          __path__: /logs/social-api/gunicorn*.log
+
+  # Nginx Access & Error Logs
+  - job_name: nginx-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          service: nginx
+          log_type: access
+          __path__: /logs/nginx/access.log
+
+  - job_name: nginx-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          service: nginx
+          log_type: error
+          __path__: /logs/nginx/error.log
+
+  # System Logs (Limited)
+  - job_name: system-auth
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          service: auth
+          __path__: /var/log/auth.log
+
+  - job_name: system-syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          service: syslog
+          __path__: /var/log/syslog
+    # Limit system logs to errors and warnings only
+    pipeline_stages:
+      - regex:
+          expression: '(?P<timestamp>\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(?P<hostname>\S+)\s+(?P<service>\S+):\s+(?P<message>.*)'
+      - labels:
+          hostname:
+          service:
+      - match:
+          selector: '{job="system"}'
+          stages:
+            - regex:
+                expression: '.*(ERROR|error|WARN|warning|CRIT|critical|FATAL|fatal).*'
+
+  # Docker Container Logs (Optional)
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["logging=promtail"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'logstream'
+      - source_labels: ['__meta_docker_container_label_logging_jobname']
+        target_label: 'job'
+
+  # Template for additional projects
+  # - job_name: project-name-django
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: project-name
+  #         service: django
+  #         project: project-display-name
+  #         __path__: /logs/project-name/django*.log

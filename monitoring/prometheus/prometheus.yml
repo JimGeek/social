@@ -1,0 +1,74 @@
+# Production Prometheus Configuration
+# Multi-project monitoring setup
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  scrape_timeout: 10s
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load alerting rules
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # System metrics from Node Exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # Redis monitoring
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # Service Controller API metrics
+  - job_name: 'service-controller'
+    static_configs:
+      - targets: ['service-controller:8080']
+    scrape_interval: 30s
+    metrics_path: '/system/metrics'
+    bearer_token: 'monitoring-api-token-2025'
+
+  # Social Media Project
+  - job_name: 'social-media-backend'
+    static_configs:
+      - targets: ['social-api.marvelhomes.pro:8000']
+    scrape_interval: 30s
+    metrics_path: '/health/metrics'
+    scrape_timeout: 10s
+
+  # Social Media Project (Alternative/Backup)
+  - job_name: 'social-media-backend-backup'
+    static_configs:
+      - targets: ['31.97.224.53:8000']
+    scrape_interval: 30s
+    metrics_path: '/health/metrics'
+    scrape_timeout: 10s
+
+  # Template for additional projects
+  # - job_name: 'project-name-backend'
+  #   static_configs:
+  #     - targets: ['project-domain.com:8000']
+  #   scrape_interval: 30s
+  #   metrics_path: '/health/metrics'
+  #   scrape_timeout: 10s
+
+# Remote write configuration for long-term storage (optional)
+# remote_write:
+#   - url: "https://your-remote-storage.com/api/v1/write"
+#     basic_auth:
+#       username: "username"
+#       password: "password"
