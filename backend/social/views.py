@@ -2652,8 +2652,11 @@ class AnalyticsSummaryView(APIView):
                 except ValueError:
                     return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
             else:
-                since_date = timezone.now() - timedelta(days=days_back)
-                until_date = timezone.now()
+                # Fix date filtering to use proper date boundaries 
+                # Start from beginning of day N days ago, end at end of current day
+                now = timezone.now()
+                since_date = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_back)
+                until_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             
             logger.info(f"Date range: {since_date} to {until_date}")
             
@@ -2823,11 +2826,10 @@ class AnalyticsSummaryView(APIView):
         try:
             # Facebook Graph API endpoint for user posts
             url = f"https://graph.facebook.com/v20.0/{account.account_id}/posts"
+            # Remove Facebook API date filtering - use client-side filtering instead for more reliability
             params = {
                 'access_token': account.access_token,
-                'fields': 'id,message,created_time,permalink_url,insights.metric(post_impressions,post_clicks,post_reactions_like_total,post_comments,post_shares)',
-                'since': since_date.strftime('%Y-%m-%d'),
-                'until': until_date.strftime('%Y-%m-%d'),
+                'fields': 'id,message,created_time,permalink_url',
                 'limit': 100
             }
             
@@ -2839,6 +2841,26 @@ class AnalyticsSummaryView(APIView):
                 total_metrics = {'impressions': 0, 'reach': 0, 'likes': 0, 'comments': 0, 'shares': 0}
                 
                 for post in data.get('data', []):
+                    # Parse post timestamp and apply client-side date filtering
+                    from datetime import datetime
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    
+                    post_timestamp_str = post.get('created_time')
+                    if post_timestamp_str:
+                        try:
+                            # Parse Facebook timestamp (ISO 8601 format)
+                            post_timestamp = datetime.fromisoformat(post_timestamp_str.replace('Z', '+00:00'))
+                            post_timestamp = timezone.make_aware(post_timestamp) if timezone.is_naive(post_timestamp) else post_timestamp
+                            
+                            # Apply client-side date filtering (more reliable than API parameters)
+                            if post_timestamp < since_date or post_timestamp > until_date:
+                                logger.info(f"Post {post.get('id')} timestamp {post_timestamp} not in range {since_date} to {until_date}")
+                                continue
+                        except Exception as e:
+                            logger.warning(f"Could not parse post timestamp {post_timestamp_str}: {e}")
+                            continue
+                    
                     # Parse insights
                     insights = post.get('insights', {}).get('data', [])
                     post_impressions = 0
@@ -2906,19 +2928,37 @@ class AnalyticsSummaryView(APIView):
                 total_metrics = {'impressions': 0, 'reach': 0, 'likes': 0, 'comments': 0, 'shares': 0}
                 
                 for post in data.get('data', []):
-                    # Check if post is within date range
-                    post_time = datetime.fromisoformat(post.get('timestamp', '').replace('Z', '+00:00'))
-                    if since_date <= post_time <= until_date:
-                        likes = post.get('like_count', 0)
-                        comments = post.get('comments_count', 0)
-                        
-                        # Add to totals
-                        total_metrics['likes'] += likes
-                        total_metrics['comments'] += comments
-                        # Instagram doesn't provide impressions via Basic Display API
-                        total_metrics['reach'] += likes  # Use likes as reach approximation
-                        
-                        posts.append({
+                    # Parse post timestamp and apply client-side date filtering  
+                    from datetime import datetime
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    
+                    post_timestamp_str = post.get('timestamp')
+                    if post_timestamp_str:
+                        try:
+                            # Parse Instagram timestamp (ISO 8601 format)
+                            post_timestamp = datetime.fromisoformat(post_timestamp_str.replace('Z', '+00:00'))
+                            post_timestamp = timezone.make_aware(post_timestamp) if timezone.is_naive(post_timestamp) else post_timestamp
+                            
+                            # Apply client-side date filtering 
+                            if post_timestamp < since_date or post_timestamp > until_date:
+                                logger.info(f"Instagram post {post.get('id')} timestamp {post_timestamp} not in range {since_date} to {until_date}")
+                                continue
+                        except Exception as e:
+                            logger.warning(f"Could not parse Instagram post timestamp {post_timestamp_str}: {e}")
+                            continue
+                    
+                    # Process Instagram post metrics
+                    likes = post.get('like_count', 0)
+                    comments = post.get('comments_count', 0)
+                    
+                    # Add to totals
+                    total_metrics['likes'] += likes
+                    total_metrics['comments'] += comments
+                    # Instagram doesn't provide impressions via Basic Display API
+                    total_metrics['reach'] += likes  # Use likes as reach approximation
+                    
+                    posts.append({
                             'id': post.get('id'),
                             'content': post.get('caption', ''),
                             'published_at': post.get('timestamp'),
