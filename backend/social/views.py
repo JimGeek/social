@@ -1903,6 +1903,11 @@ class LinkedInCallbackView(APIView):
         state = request.GET.get('state')
         error = request.GET.get('error')
         
+        # Debug logging for OAuth parameters
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"LinkedIn OAuth Debug - Code: {code}, State: {state}, Error: {error}")
+        
         # Get user from state parameter
         user = None
         org_slug = 'social'
