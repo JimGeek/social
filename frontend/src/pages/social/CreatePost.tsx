@@ -82,11 +82,11 @@ const CreatePost: React.FC<CreatePostProps> = () => {
   // Clear form when account selection changes significantly
   useEffect(() => {
     // Only clear if we're switching between different platform types
-    const currentPlatforms = selectedAccounts.map(id => 
-      accounts.find(acc => acc.id === id)?.platform.name
-    ).filter(Boolean);
+    const currentPlatforms = selectedAccounts
+      .map(id => accounts.find(acc => acc.id === id)?.platform.name)
+      .filter((name): name is string => Boolean(name));
     
-    const uniquePlatforms = [...new Set(currentPlatforms)];
+    const uniquePlatforms = Array.from(new Set(currentPlatforms));
     
     // If platforms changed, clear media files as different platforms have different requirements
     if (uniquePlatforms.length > 0) {
