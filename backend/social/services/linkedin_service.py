@@ -226,7 +226,9 @@ class LinkedInService:
                     # Single media
                     media_urn = self._upload_media(account, media_urls[0])
                     if media_urn:
-                        post_data["specificContent"]["com.linkedin.ugc.ShareContent"]["shareMediaCategory"] = "IMAGE"
+                        # Determine media category based on file type
+                        media_category = self._get_media_category(media_urls[0])
+                        post_data["specificContent"]["com.linkedin.ugc.ShareContent"]["shareMediaCategory"] = media_category
                         post_data["specificContent"]["com.linkedin.ugc.ShareContent"]["media"] = [
                             {
                                 "status": "READY",
@@ -257,6 +259,7 @@ class LinkedInService:
                             })
                     
                     if media_list:
+                        # Use IMAGE for multiple media (LinkedIn doesn't support mixed media types)
                         post_data["specificContent"]["com.linkedin.ugc.ShareContent"]["shareMediaCategory"] = "IMAGE"
                         post_data["specificContent"]["com.linkedin.ugc.ShareContent"]["media"] = media_list
             
@@ -307,25 +310,115 @@ class LinkedInService:
     
     def _upload_media(self, account: SocialAccount, media_url: str) -> Optional[str]:
         """
-        Upload media to LinkedIn and return media URN
-        Note: This is a simplified implementation. 
-        Full implementation requires multi-step upload process.
+        Upload media to LinkedIn using Vector API
         """
+        import requests
+        import os
+        from django.conf import settings
+        
         try:
-            # LinkedIn media upload is a multi-step process:
-            # 1. Register upload
-            # 2. Upload binary data
-            # 3. Get media URN
+            # Check if media_url is a local file path or URL
+            if media_url.startswith('http'):
+                # Remote URL - download first
+                media_response = requests.get(media_url)
+                if media_response.status_code != 200:
+                    logger.error(f"Failed to download media from {media_url}")
+                    return None
+                media_data = media_response.content
+                # Get filename from URL or use default
+                filename = media_url.split('/')[-1] if '/' in media_url else 'image.jpg'
+            else:
+                # Local file path
+                if not os.path.exists(media_url):
+                    logger.error(f"Media file not found: {media_url}")
+                    return None
+                
+                with open(media_url, 'rb') as f:
+                    media_data = f.read()
+                filename = os.path.basename(media_url)
             
-            # For now, return a placeholder URN for local media
-            # In production, implement full LinkedIn media upload flow
+            # Determine media category and recipe
+            media_category = self._get_media_category(media_url)
             
-            logger.warning("LinkedIn media upload not fully implemented. Using text-only post.")
-            return None
+            if media_category == 'VIDEO':
+                recipe = "urn:li:digitalmediaRecipe:feedshare-video"
+            else:
+                recipe = "urn:li:digitalmediaRecipe:feedshare-image"
+            
+            # Step 1: Register upload with LinkedIn
+            register_url = "https://api.linkedin.com/v2/assets?action=registerUpload"
+            register_data = {
+                "registerUploadRequest": {
+                    "recipes": [recipe],
+                    "owner": f"urn:li:person:{account.account_id}",
+                    "serviceRelationships": [
+                        {
+                            "relationshipType": "OWNER",
+                            "identifier": "urn:li:userGeneratedContent"
+                        }
+                    ]
+                }
+            }
+            
+            headers = {
+                'Authorization': f'Bearer {account.access_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            register_response = requests.post(register_url, json=register_data, headers=headers)
+            
+            if register_response.status_code != 200:
+                logger.error(f"LinkedIn register upload failed: {register_response.text}")
+                return None
+            
+            register_result = register_response.json()
+            upload_url = register_result['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl']
+            asset_id = register_result['value']['asset']
+            
+            # Step 2: Upload the actual media data
+            upload_headers = {
+                'Authorization': f'Bearer {account.access_token}',
+            }
+            
+            # Set appropriate content type
+            if media_category == 'VIDEO':
+                content_type = 'video/mp4'
+            else:
+                content_type = 'image/jpeg'
+            
+            files = {'file': (filename, media_data, content_type)}
+            upload_response = requests.post(upload_url, headers=upload_headers, files=files)
+            
+            if upload_response.status_code not in [200, 201]:
+                logger.error(f"LinkedIn media upload failed: {upload_response.text}")
+                return None
+            
+            logger.info(f"Successfully uploaded media to LinkedIn: {asset_id}")
+            return asset_id
             
         except Exception as e:
             logger.error(f"LinkedIn media upload error: {str(e)}")
             return None
+    
+    def _get_media_category(self, media_url: str) -> str:
+        """
+        Determine LinkedIn media category from file URL/path
+        LinkedIn supports: NONE, IMAGE, VIDEO, ARTICLE
+        """
+        url_lower = media_url.lower()
+        
+        # Video extensions
+        video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm']
+        if any(url_lower.endswith(ext) for ext in video_extensions):
+            return 'VIDEO'
+        
+        # Image extensions (default)
+        image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+        if any(url_lower.endswith(ext) for ext in image_extensions):
+            return 'IMAGE'
+        
+        # Default to image if uncertain
+        return 'IMAGE'
     
     def get_post_analytics(self, account: SocialAccount, post_id: str) -> Dict[str, Any]:
         """

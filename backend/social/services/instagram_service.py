@@ -40,7 +40,7 @@ class InstagramService:
         self.app_secret = settings.INSTAGRAM_APP_SECRET
     
     def publish_post(self, account: SocialAccount, content: str, media_urls: List[str] = None, 
-                    first_comment: str = None) -> Dict[str, Any]:
+                    first_comment: str = None, post_type: str = 'feed') -> Dict[str, Any]:
         """
         Publish a post to Instagram using Graph API 2025
         
@@ -49,6 +49,7 @@ class InstagramService:
             content: Post caption text
             media_urls: List of media URLs (required for Instagram)
             first_comment: Optional first comment
+            post_type: Type of post ('feed', 'reels', 'story')
             
         Returns:
             Dict with success status, post_id, post_url, and error info
@@ -64,12 +65,36 @@ class InstagramService:
                     'post_url': None
                 }
             
-            # For single media post
-            if len(media_urls) == 1:
-                return self._publish_single_media_post(account, content, media_urls[0], first_comment)
+            # Handle different post types
+            if post_type.lower() == 'reels':
+                if len(media_urls) != 1:
+                    return {
+                        'success': False,
+                        'error': 'Instagram Reels requires exactly one video file',
+                        'error_code': 'REELS_MEDIA_ERROR',
+                        'post_id': None,
+                        'post_url': None
+                    }
+                return self._publish_reels_post(account, content, media_urls[0])
+            
+            elif post_type.lower() == 'story':
+                if len(media_urls) != 1:
+                    return {
+                        'success': False,
+                        'error': 'Instagram Stories requires exactly one media file',
+                        'error_code': 'STORY_MEDIA_ERROR',
+                        'post_id': None,
+                        'post_url': None
+                    }
+                return self._publish_story_post(account, content, media_urls[0])
+            
             else:
-                # For carousel post (multiple media)
-                return self._publish_carousel_post(account, content, media_urls, first_comment)
+                # Regular feed post
+                if len(media_urls) == 1:
+                    return self._publish_single_media_post(account, content, media_urls[0], first_comment)
+                else:
+                    # For carousel post (multiple media)
+                    return self._publish_carousel_post(account, content, media_urls, first_comment)
                 
         except Exception as e:
             logger.error(f"Error publishing Instagram post: {str(e)}")
@@ -475,6 +500,29 @@ class InstagramService:
                 'supported_formats': ['jpg', 'jpeg', 'png', 'mp4', 'mov'],
                 'max_file_size_mb': 100,
                 'requires_media': True
+            },
+            {
+                'type': 'reels',
+                'display_name': 'Reels',
+                'description': 'Short-form vertical video content',
+                'max_files': 1,
+                'supported_formats': ['mp4', 'mov'],
+                'max_file_size_mb': 100,
+                'min_duration_seconds': 3,
+                'max_duration_seconds': 90,
+                'aspect_ratio': '9:16',
+                'requires_media': True
+            },
+            {
+                'type': 'story',
+                'display_name': 'Story',
+                'description': 'Temporary content (24 hours)',
+                'max_files': 1,
+                'supported_formats': ['jpg', 'jpeg', 'png', 'mp4', 'mov'],
+                'max_file_size_mb': 100,
+                'max_duration_seconds': 15,
+                'aspect_ratio': '9:16',
+                'requires_media': True
             }
         ]
         
@@ -497,3 +545,189 @@ class InstagramService:
                 })
         
         return supported_types
+    
+    def _publish_reels_post(self, account: SocialAccount, caption: str, video_url: str) -> Dict[str, Any]:
+        """Publish an Instagram Reels post"""
+        try:
+            # Validate that it's a video
+            if self._get_media_type(video_url) != 'video':
+                return {
+                    'success': False,
+                    'error': 'Instagram Reels requires a video file',
+                    'error_code': 'REELS_NOT_VIDEO',
+                    'post_id': None,
+                    'post_url': None
+                }
+            
+            # Step 1: Create Reels container
+            container_response = self._create_reels_container(account, caption, video_url)
+            
+            if not container_response['success']:
+                return container_response
+            
+            container_id = container_response['container_id']
+            
+            # Step 2: Publish the Reels container
+            publish_response = self._publish_media_container(account, container_id)
+            
+            if not publish_response['success']:
+                return publish_response
+            
+            post_id = publish_response['post_id']
+            # Reels use a different URL format
+            post_url = f"https://www.instagram.com/reel/{self._get_shortcode_from_id(post_id)}/"
+            
+            return {
+                'success': True,
+                'post_id': post_id,
+                'post_url': post_url,
+                'error': None,
+                'error_code': None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error publishing Instagram Reels: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'error_code': 'REELS_ERROR',
+                'post_id': None,
+                'post_url': None
+            }
+    
+    def _publish_story_post(self, account: SocialAccount, caption: str, media_url: str) -> Dict[str, Any]:
+        """Publish an Instagram Story"""
+        try:
+            # Step 1: Create Story container
+            container_response = self._create_story_container(account, caption, media_url)
+            
+            if not container_response['success']:
+                return container_response
+            
+            container_id = container_response['container_id']
+            
+            # Step 2: Publish the Story container
+            publish_response = self._publish_media_container(account, container_id)
+            
+            if not publish_response['success']:
+                return publish_response
+            
+            post_id = publish_response['post_id']
+            # Stories don't have permanent URLs, they expire after 24h
+            post_url = f"https://www.instagram.com/stories/{account.account_username}/"
+            
+            return {
+                'success': True,
+                'post_id': post_id,
+                'post_url': post_url,
+                'error': None,
+                'error_code': None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error publishing Instagram Story: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'error_code': 'STORY_ERROR',
+                'post_id': None,
+                'post_url': None
+            }
+    
+    def _create_reels_container(self, account: SocialAccount, caption: str, video_url: str) -> Dict[str, Any]:
+        """Create a Reels container for Instagram posting"""
+        try:
+            url = f"{self.base_url}/{account.account_id}/media"
+            
+            data = {
+                'access_token': account.access_token,
+                'media_type': 'REELS',
+                'video_url': video_url,
+                'caption': caption
+            }
+            
+            response = requests.post(url, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                return {
+                    'success': True,
+                    'container_id': result.get('id'),
+                    'error': None,
+                    'error_code': None
+                }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                return {
+                    'success': False,
+                    'error': f'Failed to create Reels container: {error_message}',
+                    'error_code': 'REELS_CONTAINER_FAILED',
+                    'container_id': None
+                }
+                
+        except Exception as e:
+            logger.error(f"Error creating Instagram Reels container: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'error_code': 'REELS_CONTAINER_ERROR',
+                'container_id': None
+            }
+    
+    def _create_story_container(self, account: SocialAccount, caption: str, media_url: str) -> Dict[str, Any]:
+        """Create a Story container for Instagram posting"""
+        try:
+            url = f"{self.base_url}/{account.account_id}/media"
+            
+            # Determine media type
+            media_type = self._get_media_type(media_url)
+            
+            data = {
+                'access_token': account.access_token,
+                'media_type': 'STORIES'
+            }
+            
+            if media_type == 'image':
+                data['image_url'] = media_url
+            elif media_type == 'video':
+                data['video_url'] = media_url
+            else:
+                return {
+                    'success': False,
+                    'error': f'Unsupported media type: {media_type}',
+                    'error_code': 'UNSUPPORTED_MEDIA_TYPE',
+                    'container_id': None
+                }
+            
+            # Stories don't use caption in the same way - they use text overlays
+            # For now, we'll skip the caption for stories
+            
+            response = requests.post(url, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                return {
+                    'success': True,
+                    'container_id': result.get('id'),
+                    'error': None,
+                    'error_code': None
+                }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                return {
+                    'success': False,
+                    'error': f'Failed to create Story container: {error_message}',
+                    'error_code': 'STORY_CONTAINER_FAILED',
+                    'container_id': None
+                }
+                
+        except Exception as e:
+            logger.error(f"Error creating Instagram Story container: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'error_code': 'STORY_CONTAINER_ERROR',
+                'container_id': None
+            }

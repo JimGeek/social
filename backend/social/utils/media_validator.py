@@ -20,12 +20,12 @@ class MediaValidator:
     PLATFORM_REQUIREMENTS = {
         'instagram': {
             'images': {
-                'formats': ['JPEG', 'JPG'],  # Instagram only accepts JPEG for images
+                'formats': ['JPEG', 'JPG', 'PNG'],  # Support common image formats
                 'max_size_mb': 30,
                 'min_width': 320,
-                'max_width': 1080,
+                'max_width': 2048,  # More flexible width limit
                 'min_height': 320,
-                'max_height': 1080,
+                'max_height': 2048,  # More flexible height limit
                 'aspect_ratios': [(1, 1), (4, 5), (16, 9)],  # Square, portrait, landscape
                 'max_count': 10  # Carousel limit
             },
@@ -44,7 +44,7 @@ class MediaValidator:
             'stories': {
                 'aspect_ratio': (9, 16),  # Vertical only
                 'duration_max': 15,  # seconds
-                'formats': ['JPEG', 'MOV', MP4']
+                'formats': ['JPEG', 'MOV', 'MP4']
             },
             'reels': {
                 'aspect_ratio': (9, 16),  # Vertical only

@@ -164,9 +164,31 @@ class FacebookService:
             
             # Handle media attachments
             if media_urls:
-                # For now, just use the first image
-                # In production, you'd handle multiple media properly
-                data['link'] = media_urls[0] if media_urls[0].startswith('http') else None
+                # Check if we have videos - Facebook videos need different handling
+                has_video = any(self._is_video_file(url) for url in media_urls)
+                
+                if has_video and len(media_urls) == 1:
+                    # Single video post - use different endpoint
+                    return self._publish_video_post(account, content, media_urls[0])
+                elif has_video:
+                    # Mixed media or multiple videos not supported in single post
+                    logger.warning("Mixed media or multiple videos not supported in single Facebook post")
+                
+                # Handle image uploads
+                media_fbids = []
+                for media_url in media_urls[:10]:  # Facebook supports up to 10 images
+                    if not self._is_video_file(media_url):  # Only images for regular posts
+                        fbid = self._upload_media_to_facebook(account, media_url)
+                        if fbid:
+                            media_fbids.append(fbid)
+                
+                if media_fbids:
+                    if len(media_fbids) == 1:
+                        # Single image post
+                        data['object_attachment'] = media_fbids[0]
+                    else:
+                        # Multiple images - create album
+                        data['attached_media'] = [{'media_fbid': fbid} for fbid in media_fbids]
             
             response = requests.post(url, data=data)
             response.raise_for_status()
@@ -382,3 +404,131 @@ class FacebookService:
                 'valid': False,
                 'error': str(e)
             }
+    
+    def _upload_media_to_facebook(self, account: SocialAccount, media_url: str) -> Optional[str]:
+        """
+        Upload media to Facebook page and return media FBID
+        """
+        import os
+        
+        try:
+            page_id = account.account_id
+            access_token = account.access_token
+            
+            # Check if media_url is a local file path or URL
+            if media_url.startswith('http'):
+                # Remote URL - download first
+                media_response = requests.get(media_url)
+                if media_response.status_code != 200:
+                    logger.error(f"Failed to download media from {media_url}")
+                    return None
+                media_data = media_response.content
+                filename = media_url.split('/')[-1] if '/' in media_url else 'image.jpg'
+            else:
+                # Local file path
+                if not os.path.exists(media_url):
+                    logger.error(f"Media file not found: {media_url}")
+                    return None
+                
+                with open(media_url, 'rb') as f:
+                    media_data = f.read()
+                filename = os.path.basename(media_url)
+            
+            # Upload to Facebook page photos endpoint
+            upload_url = f"{self.base_url}/{page_id}/photos"
+            
+            # Determine proper content type
+            if filename.lower().endswith('.png'):
+                content_type = 'image/png'
+            elif filename.lower().endswith('.gif'):
+                content_type = 'image/gif'
+            else:
+                content_type = 'image/jpeg'
+            
+            files = {
+                'source': (filename, media_data, content_type)
+            }
+            
+            data = {
+                'access_token': access_token,
+                'published': 'false'  # Upload unpublished to get FBID for later use
+            }
+            
+            response = requests.post(upload_url, files=files, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                fbid = result.get('id')
+                logger.info(f"Successfully uploaded media to Facebook: {fbid}")
+                return fbid
+            else:
+                logger.error(f"Facebook media upload failed: {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Facebook media upload error: {str(e)}")
+            return None
+    
+    def _is_video_file(self, media_url: str) -> bool:
+        """Check if the media file is a video"""
+        url_lower = media_url.lower()
+        video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm']
+        return any(url_lower.endswith(ext) for ext in video_extensions)
+    
+    def _publish_video_post(self, account: SocialAccount, content: str, video_url: str) -> Dict[str, Any]:
+        """Publish a video post to Facebook page"""
+        import os
+        
+        try:
+            page_id = account.account_id
+            access_token = account.access_token
+            
+            # Check if video_url is a local file path or URL
+            if video_url.startswith('http'):
+                # Remote URL - download first
+                video_response = requests.get(video_url)
+                if video_response.status_code != 200:
+                    logger.error(f"Failed to download video from {video_url}")
+                    return {'success': False, 'error': f'Failed to download video from {video_url}'}
+                video_data = video_response.content
+                filename = video_url.split('/')[-1] if '/' in video_url else 'video.mp4'
+            else:
+                # Local file path
+                if not os.path.exists(video_url):
+                    logger.error(f"Video file not found: {video_url}")
+                    return {'success': False, 'error': f'Video file not found: {video_url}'}
+                
+                with open(video_url, 'rb') as f:
+                    video_data = f.read()
+                filename = os.path.basename(video_url)
+            
+            # Upload video to Facebook page
+            upload_url = f"{self.base_url}/{page_id}/videos"
+            
+            files = {
+                'source': (filename, video_data, 'video/mp4')
+            }
+            
+            data = {
+                'access_token': access_token,
+                'description': content
+            }
+            
+            response = requests.post(upload_url, files=files, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                post_id = result.get('id')
+                logger.info(f"Successfully uploaded video to Facebook: {post_id}")
+                return {
+                    'success': True,
+                    'post_id': post_id,
+                    'post_url': f"https://facebook.com/{post_id.replace('_', '/posts/')}"
+                }
+            else:
+                logger.error(f"Facebook video upload failed: {response.text}")
+                return {'success': False, 'error': f'Facebook video upload failed: {response.text}'}
+                
+        except Exception as e:
+            logger.error(f"Facebook video upload error: {str(e)}")
+            return {'success': False, 'error': str(e)}
