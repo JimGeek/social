@@ -79,4 +79,9 @@ urlpatterns = [
     
     # Diagnostics endpoints
     path('diagnostics/', views.SocialMediaDiagnosticsView.as_view(), name='social-media-diagnostics'),
+    
+    # Sentry Monitoring endpoints
+    path('log/', views.SentryLogsView.as_view(), name='sentry-logs'),
+    path('log/test/', views.SentryTestView.as_view(), name='sentry-test'),
+    path('metrics/', views.ApplicationMetricsView.as_view(), name='app-metrics'),
 ]
