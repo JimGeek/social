@@ -3,11 +3,20 @@ Instagram Graph API Service for Social Media Manager
 
 Implements Instagram Graph API 2025 for:
 - Publishing posts with media (images/videos)
+- Publishing Instagram Stories (Business accounts only)
+- Publishing Instagram Reels (short videos)
+- Carousel posts (multiple media items)
 - Account management
 - Analytics and insights
 
 Note: Instagram Graph API 2025 requires media (images/videos) for posts.
 Text-only posts are not supported.
+
+Supported Content Types:
+- Feed Posts: Single image/video with caption
+- Carousel Posts: Multiple images/videos (max 10)
+- Stories: 24-hour content (Business accounts only)
+- Reels: Short vertical videos (3-90 seconds)
 """
 
 import logging

@@ -142,6 +142,11 @@ export const socialAPI = {
     return response.data;
   },
 
+  connectLinkedIn: async (): Promise<{ auth_url: string }> => {
+    const response = await api.get('/api/social/auth/linkedin/connect/');
+    return response.data;
+  },
+
   disconnectAccount: async (accountId: string): Promise<void> => {
     await api.post(`/api/social/auth/disconnect/${accountId}/`);
   },

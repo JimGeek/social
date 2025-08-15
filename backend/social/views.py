@@ -248,10 +248,12 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         return SocialPost.objects.all()
     
     def perform_create(self, serializer):
-        serializer.save(
-            
-            created_by=self.request.user
-        )
+        # Validate post against platform restrictions before saving
+        post_data = serializer.validated_data
+        target_accounts = self.request.data.get('target_accounts', [])
+        self._validate_post_against_platforms(post_data, target_accounts)
+        
+        serializer.save(created_by=self.request.user)
     
     def update(self, request, *args, **kwargs):
         """Override update to prevent editing published posts"""
@@ -284,6 +286,133 @@ class SocialPostViewSet(viewsets.ModelViewSet):
             )
         
         return super().partial_update(request, *args, **kwargs)
+    
+    def _validate_post_against_platforms(self, post_data, target_accounts):
+        """Validate post content against platform-specific restrictions"""
+        from .utils.media_validator import MediaValidator
+        from rest_framework.exceptions import ValidationError
+        
+        post_type = post_data.get('post_type', 'text')
+        content = post_data.get('content', '')
+        media_files = post_data.get('media_files', [])
+        
+        # Get target accounts
+        accounts = SocialAccount.objects.filter(
+            id__in=target_accounts,
+            created_by=self.request.user,
+            is_active=True
+        )
+        
+        validation_errors = []
+        
+        for account in accounts:
+            platform_name = account.platform.name
+            platform = account.platform
+            
+            # Platform-specific validations
+            if platform_name == 'instagram':
+                # Instagram requires media for all posts
+                if not media_files or len(media_files) == 0:
+                    validation_errors.append(
+                        f"Instagram ({account.account_name}) requires at least one image or video. "
+                        "Text-only posts are not supported."
+                    )
+                
+                # Validate post type for Instagram
+                if post_type == 'story':
+                    # Check if account supports stories (Business accounts only)
+                    from .services.instagram_service import InstagramService
+                    instagram_service = InstagramService()
+                    account_info = instagram_service.get_account_info(account)
+                    
+                    if account_info['success']:
+                        account_type = account_info['data'].get('account_type', 'PERSONAL')
+                        if account_type != 'BUSINESS':
+                            validation_errors.append(
+                                f"Stories are only available for Instagram Business accounts. "
+                                f"{account.account_name} is a {account_type} account."
+                            )
+                
+                elif post_type == 'reel':
+                    # Validate reel content
+                    if media_files:
+                        for media_url in media_files:
+                            # This would need actual media validation
+                            # For now, just check that it's intended to be video
+                            pass
+                
+                # Validate caption length
+                if len(content) > platform.max_text_length:
+                    validation_errors.append(
+                        f"Caption too long for Instagram ({account.account_name}). "
+                        f"Max {platform.max_text_length} characters, got {len(content)}."
+                    )
+            
+            elif platform_name == 'facebook':
+                # Facebook supports text posts but has character limits
+                if len(content) > platform.max_text_length:
+                    validation_errors.append(
+                        f"Post too long for Facebook ({account.account_name}). "
+                        f"Max {platform.max_text_length} characters, got {len(content)}."
+                    )
+                
+                # Facebook doesn't support Instagram-specific post types
+                if post_type in ['story', 'reel']:
+                    validation_errors.append(
+                        f"{post_type.title()}s are not supported on Facebook ({account.account_name}). "
+                        "Consider using a regular post or video instead."
+                    )
+            
+            elif platform_name == 'linkedin':
+                # LinkedIn has character limits
+                if len(content) > platform.max_text_length:
+                    validation_errors.append(
+                        f"Post too long for LinkedIn ({account.account_name}). "
+                        f"Max {platform.max_text_length} characters, got {len(content)}."
+                    )
+                
+                # LinkedIn doesn't support stories or reels
+                if post_type in ['story', 'reel']:
+                    validation_errors.append(
+                        f"{post_type.title()}s are not supported on LinkedIn ({account.account_name}). "
+                        "Use a regular post instead."
+                    )
+            
+            elif platform_name == 'twitter':
+                # Twitter has strict character limits
+                if len(content) > platform.max_text_length:
+                    validation_errors.append(
+                        f"Tweet too long for Twitter/X ({account.account_name}). "
+                        f"Max {platform.max_text_length} characters, got {len(content)}."
+                    )
+                
+                # Twitter doesn't support stories or reels
+                if post_type in ['story', 'reel']:
+                    validation_errors.append(
+                        f"{post_type.title()}s are not supported on Twitter/X ({account.account_name}). "
+                        "Use a regular tweet instead."
+                    )
+                
+                # Twitter has media count limits
+                if media_files and len(media_files) > platform.max_image_count:
+                    validation_errors.append(
+                        f"Too many media files for Twitter/X ({account.account_name}). "
+                        f"Max {platform.max_image_count} files, got {len(media_files)}."
+                    )
+            
+            # Check if account supports posting
+            if not account.posting_enabled:
+                validation_errors.append(
+                    f"Posting is disabled for {platform_name} account {account.account_name}. "
+                    "This may be due to API restrictions or account type limitations."
+                )
+        
+        # Raise validation error if any issues found
+        if validation_errors:
+            raise ValidationError({
+                'platform_restrictions': validation_errors,
+                'message': 'Post validation failed due to platform restrictions'
+            })
     
     @action(detail=True, methods=['post'])
     def duplicate(self, request, pk=None):
@@ -1725,6 +1854,165 @@ class DisconnectAccountView(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LinkedInConnectView(APIView):
+    """Initiate LinkedIn OAuth connection"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Generate LinkedIn OAuth URL"""
+        from .services.linkedin_service import LinkedInService
+        
+        linkedin_service = LinkedInService()
+        redirect_uri = f"{settings.BACKEND_URL}/api/social/auth/linkedin/callback/"
+        
+        # Create state parameter with user info for callback
+        import base64
+        import json
+        state_data = {
+            'csrf': str(uuid.uuid4()),
+            'user_id': str(request.user.id)
+        }
+        state_encoded = base64.b64encode(json.dumps(state_data).encode()).decode()
+        
+        auth_url = linkedin_service.get_auth_url(redirect_uri, state_encoded)
+        
+        # Store user ID in session for callback authentication
+        request.session['oauth_user_id'] = str(request.user.id)
+        request.session['linkedin_oauth_state'] = state_encoded
+        
+        # Store user token for frontend authentication after redirect
+        from rest_framework.authtoken.models import Token
+        token, created = Token.objects.get_or_create(user=request.user)
+        request.session['oauth_token'] = token.key
+        
+        # Force session save
+        request.session.save()
+        
+        return Response({'auth_url': auth_url})
+
+
+class LinkedInCallbackView(APIView):
+    """Handle LinkedIn OAuth callback"""
+    permission_classes = []  # Remove auth requirement for callback
+    
+    def get(self, request):
+        """Process LinkedIn OAuth callback"""
+        code = request.GET.get('code')
+        state = request.GET.get('state')
+        error = request.GET.get('error')
+        
+        # Get user from state parameter
+        user = None
+        org_slug = 'social'
+        
+        if state:
+            try:
+                import base64
+                import json
+                decoded_state = json.loads(base64.b64decode(state.encode()).decode())
+                user_id = decoded_state.get('user_id')
+                csrf_token = decoded_state.get('csrf')
+                
+                # Get user from database
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                user = User.objects.get(id=user_id)
+                
+            except Exception as e:
+                logger.error(f"Error decoding LinkedIn state: {str(e)}")
+        
+        # Fallback to session-based user retrieval
+        if not user:
+            user = self._get_user_from_session(request)
+        
+        if not user:
+            request.session.pop('oauth_user_id', None)
+            request.session.pop('linkedin_oauth_state', None)
+            return redirect(f"{settings.FRONTEND_URL}/social/settings?error=authentication_required&message=Session expired during LinkedIn OAuth flow")
+        
+        if error:
+            return redirect(f"{settings.FRONTEND_URL}/social/settings?error=linkedin_oauth_error&message={error}")
+        
+        if not code:
+            return redirect(f"{settings.FRONTEND_URL}/social/settings?error=linkedin_oauth_error&message=No authorization code received")
+        
+        try:
+            from .services.linkedin_service import LinkedInService
+            
+            linkedin_service = LinkedInService()
+            redirect_uri = f"{settings.BACKEND_URL}/api/social/auth/linkedin/callback/"
+            
+            # Exchange code for token
+            token_result = linkedin_service.exchange_code_for_token(code, redirect_uri)
+            
+            if not token_result['success']:
+                return redirect(f"{settings.FRONTEND_URL}/social/settings?error=linkedin_token_error&message={token_result['error']}")
+            
+            access_token = token_result['access_token']
+            expires_in = token_result['expires_in']
+            
+            # Get user profile
+            profile_result = linkedin_service.get_user_profile(access_token)
+            
+            if not profile_result['success']:
+                return redirect(f"{settings.FRONTEND_URL}/social/settings?error=linkedin_profile_error&message={profile_result['error']}")
+            
+            profile_data = profile_result['data']
+            
+            # Get LinkedIn platform
+            try:
+                linkedin_platform = SocialPlatform.objects.get(name='linkedin')
+            except SocialPlatform.DoesNotExist:
+                return redirect(f"{settings.FRONTEND_URL}/social/settings?error=platform_error&message=LinkedIn platform not configured")
+            
+            # Calculate token expiration
+            token_expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
+            
+            # Create or update LinkedIn account
+            linkedin_account, created = SocialAccount.objects.update_or_create(
+                platform=linkedin_platform,
+                account_id=profile_data['id'],
+                defaults={
+                    'account_name': f"{profile_data['first_name']} {profile_data['last_name']}".strip(),
+                    'account_username': '',  # LinkedIn doesn't provide username in basic profile
+                    'profile_picture_url': profile_data['profile_picture_url'],
+                    'access_token': access_token,
+                    'refresh_token': '',  # LinkedIn doesn't support refresh tokens
+                    'token_expires_at': token_expires_at,
+                    'status': 'connected',
+                    'connection_type': 'standard',
+                    'permissions': [token_result.get('scope', '')],
+                    'posting_enabled': True,
+                    'is_active': True,
+                    'last_sync': timezone.now(),
+                    'created_by': user
+                }
+            )
+            
+            # Clear session data
+            request.session.pop('oauth_user_id', None)
+            request.session.pop('linkedin_oauth_state', None)
+            
+            action = 'connected' if created else 'updated'
+            return redirect(f"{settings.FRONTEND_URL}/social/settings?success=linkedin_{action}&account={linkedin_account.account_name}")
+            
+        except Exception as e:
+            logger.error(f"LinkedIn OAuth callback error: {str(e)}")
+            return redirect(f"{settings.FRONTEND_URL}/social/settings?error=linkedin_connection_error&message=Failed to connect LinkedIn account")
+    
+    def _get_user_from_session(self, request):
+        """Helper method to get user from session"""
+        user_id = request.session.get('oauth_user_id')
+        if user_id:
+            try:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                return User.objects.get(id=user_id)
+            except:
+                return None
+        return None
 
 
 # Publishing Views
@@ -3618,4 +3906,224 @@ class AutoSyncView(APIView):
             return Response({
                 'success': False,
                 'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Media Upload Views
+class MediaUploadView(APIView):
+    """Handle media file uploads with validation"""
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def post(self, request):
+        """Upload and validate a media file"""
+        from .utils.media_validator import MediaValidator
+        import os
+        from PIL import Image
+        from django.core.files.storage import default_storage
+        
+        try:
+            file = request.FILES.get('file')
+            if not file:
+                return Response({
+                    'error': 'No file provided'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            platform = request.data.get('platform', 'instagram')
+            post_type = request.data.get('post_type', 'image')
+            analyze_content = request.data.get('analyze_content', 'true').lower() == 'true'
+            
+            # Validate file size (100MB limit)
+            if file.size > 100 * 1024 * 1024:
+                return Response({
+                    'error': 'File size exceeds 100MB limit'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Save file temporarily
+            file_name = f"temp_{uuid.uuid4()}_{file.name}"
+            file_path = default_storage.save(f"temp/{file_name}", file)
+            full_file_path = default_storage.path(file_path)
+            
+            try:
+                # Validate with MediaValidator
+                validation_result = MediaValidator.validate_file(
+                    full_file_path, 
+                    platform, 
+                    post_type
+                )
+                
+                if not validation_result['valid']:
+                    # Clean up temp file
+                    default_storage.delete(file_path)
+                    return Response({
+                        'valid': False,
+                        'errors': validation_result['errors'],
+                        'warnings': validation_result.get('warnings', [])
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Create SocialMediaFile record
+                media_file = SocialMediaFile.objects.create(
+                    file=file_path,
+                    file_name=file.name,
+                    file_type=validation_result['metadata']['media_type'],
+                    file_size=file.size,
+                    mime_type=file.content_type,
+                    width=validation_result['metadata'].get('width'),
+                    height=validation_result['metadata'].get('height'),
+                    duration=validation_result['metadata'].get('duration'),
+                    uploaded_by=request.user
+                )
+                
+                # Generate AI alt text if requested and it's an image
+                if analyze_content and validation_result['metadata']['media_type'] == 'image':
+                    try:
+                        alt_text = self._generate_alt_text(full_file_path)
+                        media_file.alt_text = alt_text
+                        media_file.save(update_fields=['alt_text'])
+                    except Exception as e:
+                        logger.warning(f"Failed to generate alt text: {str(e)}")
+                
+                # Remove temp file path, keep the actual file
+                os.rename(full_file_path, default_storage.path(f"social_media/{timezone.now().year}/{timezone.now().month}/{media_file.id}_{file.name}"))
+                media_file.file = f"social_media/{timezone.now().year}/{timezone.now().month}/{media_file.id}_{file.name}"
+                media_file.save(update_fields=['file'])
+                
+                # Return success response
+                serializer = SocialMediaFileSerializer(media_file, context={'request': request})
+                
+                return Response({
+                    'valid': True,
+                    'file': serializer.data,
+                    'validation': validation_result,
+                    'message': 'File uploaded successfully'
+                }, status=status.HTTP_201_CREATED)
+                
+            except Exception as e:
+                # Clean up temp file on error
+                if default_storage.exists(file_path):
+                    default_storage.delete(file_path)
+                raise e
+                
+        except Exception as e:
+            logger.error(f"Media upload error: {str(e)}")
+            return Response({
+                'error': f'Upload failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _generate_alt_text(self, image_path):
+        """Generate AI alt text for images"""
+        try:
+            import openai
+            
+            if not settings.OPENAI_API_KEY:
+                return ""
+            
+            # This is a placeholder - in production you'd send the image to OpenAI Vision API
+            # For now, return a simple description
+            return "Image uploaded for social media post"
+            
+        except Exception as e:
+            logger.warning(f"Alt text generation failed: {str(e)}")
+            return ""
+
+
+class MediaValidationView(APIView):
+    """Validate media files without uploading"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        """Validate media compatibility with platform and post type"""
+        from .utils.media_validator import MediaValidator
+        
+        try:
+            platform = request.data.get('platform', 'instagram')
+            post_type = request.data.get('post_type', 'image')
+            media_urls = request.data.get('media_urls', [])
+            
+            if not media_urls:
+                return Response({
+                    'error': 'No media URLs provided'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get platform recommendations
+            recommendations = MediaValidator.get_platform_recommendations(platform, post_type)
+            
+            # Validate each media URL (if they're local files)
+            validation_results = []
+            for url in media_urls:
+                # For now, just return the recommendations
+                # In production, you'd validate actual files
+                validation_results.append({
+                    'url': url,
+                    'valid': True,
+                    'warnings': [f"Manual validation required for {url}"]
+                })
+            
+            return Response({
+                'platform': platform,
+                'post_type': post_type,
+                'recommendations': recommendations,
+                'validations': validation_results
+            })
+            
+        except Exception as e:
+            logger.error(f"Media validation error: {str(e)}")
+            return Response({
+                'error': f'Validation failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PlatformCapabilitiesView(APIView):
+    """Get platform-specific posting capabilities"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """Get supported post types and media requirements for all platforms"""
+        from .services.instagram_service import InstagramService
+        
+        try:
+            platform = request.query_params.get('platform')
+            
+            if platform == 'instagram':
+                # Get Instagram-specific capabilities
+                instagram_service = InstagramService()
+                
+                # Try to get capabilities for user's Instagram accounts
+                user_accounts = SocialAccount.objects.filter(
+                    created_by=request.user,
+                    platform__name='instagram',
+                    is_active=True
+                )
+                
+                account_capabilities = []
+                for account in user_accounts:
+                    supported_types = instagram_service.get_supported_post_types(account)
+                    account_capabilities.append({
+                        'account': SocialAccountSerializer(account).data,
+                        'supported_types': supported_types
+                    })
+                
+                return Response({
+                    'platform': 'instagram',
+                    'account_capabilities': account_capabilities,
+                    'general_requirements': {
+                        'media_required': True,
+                        'text_only_supported': False,
+                        'max_caption_length': 2200,
+                        'max_hashtags': 30
+                    }
+                })
+            
+            else:
+                # Generic response for other platforms
+                return Response({
+                    'platform': platform or 'all',
+                    'message': 'Platform capabilities endpoint',
+                    'supported_platforms': ['instagram', 'facebook', 'linkedin', 'twitter']
+                })
+                
+        except Exception as e:
+            logger.error(f"Platform capabilities error: {str(e)}")
+            return Response({
+                'error': f'Failed to get capabilities: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

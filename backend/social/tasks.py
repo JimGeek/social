@@ -62,6 +62,10 @@ def publish_post(self, post_id: str, target_account_ids: List[str]):
                     success, platform_post_id, platform_url, error_message = publish_to_instagram(
                         post, account, target
                     )
+                elif account.platform.name == 'linkedin':
+                    success, platform_post_id, platform_url, error_message = publish_to_linkedin(
+                        post, account, target
+                    )
                 else:
                     # Placeholder for other platforms
                     success = True
@@ -365,6 +369,44 @@ def publish_to_instagram(post: SocialPost, account: SocialAccount, target: Socia
             
     except Exception as e:
         return (False, None, None, str(e))
+
+
+def publish_to_linkedin(post: SocialPost, account: SocialAccount, target: SocialPostTarget) -> tuple:
+    """
+    Publish post to LinkedIn using LinkedIn API v2
+    Returns: (success, platform_post_id, platform_url, error_message)
+    """
+    try:
+        from .services.linkedin_service import LinkedInService
+        
+        linkedin_service = LinkedInService()
+        
+        # Prepare content
+        content = target.content_override or post.content
+        if post.hashtags:
+            hashtags = target.hashtags_override or post.hashtags
+            content += '\n\n' + ' '.join([f'#{tag}' for tag in hashtags])
+        
+        # Publish post
+        result = linkedin_service.publish_post(
+            account=account,
+            content=content,
+            media_urls=post.media_files or []
+        )
+        
+        if result.get('success'):
+            return (
+                True,
+                result.get('post_id'),
+                result.get('post_url'),
+                None
+            )
+        else:
+            return (False, None, None, result.get('error'))
+            
+    except Exception as e:
+        return (False, None, None, str(e))
+
 
 def sync_facebook_comments(account: SocialAccount):
     """

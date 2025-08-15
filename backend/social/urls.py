@@ -29,6 +29,8 @@ urlpatterns = [
     path('auth/instagram/callback/', views.InstagramCallbackView.as_view(), name='instagram-callback'),
     path('auth/instagram-direct/connect/', views.InstagramDirectConnectView.as_view(), name='instagram-direct-connect'),
     path('auth/instagram-direct/callback/', views.InstagramDirectCallbackView.as_view(), name='instagram-direct-callback'),
+    path('auth/linkedin/connect/', views.LinkedInConnectView.as_view(), name='linkedin-connect'),
+    path('auth/linkedin/callback/', views.LinkedInCallbackView.as_view(), name='linkedin-callback'),
     path('auth/disconnect/<uuid:account_id>/', views.DisconnectAccountView.as_view(), name='disconnect-account'),
     
     # Post publishing endpoints
@@ -64,7 +66,11 @@ urlpatterns = [
     
     # Media management
     path('media/upload/', views.MediaUploadView.as_view(), name='media-upload'),
+    path('media/validate/', views.MediaValidationView.as_view(), name='media-validate'),
     path('media/analyze/', views.MediaAnalysisView.as_view(), name='media-analyze'),
+    
+    # Platform capabilities
+    path('platforms/capabilities/', views.PlatformCapabilitiesView.as_view(), name='platform-capabilities'),
     
     # Live data collection endpoints
     path('live-data/collect/', views.LiveDataCollectionView.as_view(), name='live-data-collect'),

@@ -45,6 +45,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # Development-specific OAuth redirect URIs
 FACEBOOK_REDIRECT_URI = config('FACEBOOK_REDIRECT_URI', default='http://localhost:8000/api/social/auth/facebook/callback/')
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+BACKEND_URL = config('BACKEND_URL', default='http://localhost:8000')
 
 # Development logging
 LOGGING = {

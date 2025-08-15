@@ -1,6 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import socialAPI, { SocialPlatform, SocialAccount, AIContentSuggestion } from '../../services/socialApi';
+
+interface MediaFile {
+  id: string;
+  file_url: string;
+  file_name: string;
+  file_type: 'image' | 'video';
+  file_size_mb: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+  alt_text?: string;
+}
+
+interface PlatformCapability {
+  type: string;
+  display_name: string;
+  description: string;
+  requires_media: boolean;
+  media_types: string[];
+  max_media: number;
+  notes?: string;
+}
 
 interface CreatePostProps {}
 
@@ -15,16 +37,26 @@ const CreatePost: React.FC<CreatePostProps> = () => {
   
   // Post content state
   const [content, setContent] = useState('');
-  const [postType, setPostType] = useState<'text' | 'image' | 'video' | 'carousel'>('text');
+  const [postType, setPostType] = useState<'text' | 'image' | 'video' | 'carousel' | 'story' | 'reel'>('image');
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [firstComment, setFirstComment] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  
+  // Media state
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [platformCapabilities, setPlatformCapabilities] = useState<{[key: string]: PlatformCapability[]}>({});
+  
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   
   // AI assistance state
   const [isAILoading, setIsAILoading] = useState(false);
   const [aiSuggestions, setAISuggestions] = useState<AIContentSuggestion[]>([]);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
-  const [selectedPlatformForAI, setSelectedPlatformForAI] = useState('facebook');
+  const [selectedPlatformForAI, setSelectedPlatformForAI] = useState('instagram');
   
   // UI state
   const [isPublishing, setIsPublishing] = useState(false);
@@ -42,6 +74,11 @@ const CreatePost: React.FC<CreatePostProps> = () => {
     setCharacterCount(content.length);
   }, [content]);
   
+  // Validate post when content or accounts change
+  useEffect(() => {
+    validatePost();
+  }, [content, mediaFiles, selectedAccounts, postType]);
+  
   const loadInitialData = async () => {
     try {
       const [platformsData, accountsData] = await Promise.all([
@@ -50,16 +87,105 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       ]);
       
       setPlatforms(platformsData);
-      setAccounts(accountsData.filter(acc => acc.status === 'connected'));
+      const connectedAccounts = accountsData.filter(acc => acc.status === 'connected');
+      setAccounts(connectedAccounts);
+      
+      // Load platform capabilities for connected accounts
+      await loadPlatformCapabilities(connectedAccounts);
+      
     } catch (error) {
       console.error('Failed to load data:', error);
     }
   };
   
+  const loadPlatformCapabilities = async (accountList: SocialAccount[]) => {
+    try {
+      const capabilities: {[key: string]: PlatformCapability[]} = {};
+      
+      // Get unique platform names
+      const platformNames = Array.from(new Set(accountList.map(acc => acc.platform.name)));
+      
+      for (const platformName of platformNames) {
+        try {
+          const response = await fetch(`/api/social/platforms/capabilities/?platform=${platformName}`, {
+            headers: {
+              'Authorization': `Token ${localStorage.getItem('token')}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.account_capabilities && data.account_capabilities.length > 0) {
+              capabilities[platformName] = data.account_capabilities[0].supported_types;
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to load capabilities for ${platformName}:`, error);
+        }
+      }
+      
+      setPlatformCapabilities(capabilities);
+    } catch (error) {
+      console.error('Failed to load platform capabilities:', error);
+    }
+  };
+  
+  const validatePost = async () => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    
+    // Get selected platform names
+    const selectedPlatformNames = selectedAccounts.map(id => {
+      const account = accounts.find(acc => acc.id === id);
+      return account?.platform.name;
+    }).filter((name): name is string => Boolean(name));
+    
+    // Check Instagram requirements
+    if (selectedPlatformNames.includes('instagram')) {
+      if (mediaFiles.length === 0) {
+        errors.push('Instagram requires at least one image or video. Text-only posts are not supported.');
+      }
+      
+      // Check post type restrictions
+      if (postType === 'story') {
+        const instagramAccounts = selectedAccounts.map(id => accounts.find(acc => acc.id === id))
+          .filter(acc => acc?.platform.name === 'instagram');
+        
+        // Would need to check account type via API call
+        warnings.push('Stories are only available for Instagram Business accounts.');
+      }
+      
+      if (postType === 'reel' && mediaFiles.length > 0) {
+        const nonVideoFiles = mediaFiles.filter(file => file.file_type !== 'video');
+        if (nonVideoFiles.length > 0) {
+          errors.push('Instagram Reels require video content only.');
+        }
+      }
+    }
+    
+    // Check character limits
+    for (const accountId of selectedAccounts) {
+      const account = accounts.find(acc => acc.id === accountId);
+      if (account && content.length > account.platform.max_text_length) {
+        errors.push(`Content exceeds ${account.platform.display_name} character limit (${account.platform.max_text_length} characters).`);
+      }
+    }
+    
+    // Check media count limits
+    for (const accountId of selectedAccounts) {
+      const account = accounts.find(acc => acc.id === accountId);
+      if (account && mediaFiles.length > account.platform.max_image_count) {
+        errors.push(`Too many media files for ${account.platform.display_name} (max ${account.platform.max_image_count}).`);
+      }
+    }
+    
+    setValidationErrors(errors);
+    setValidationWarnings(warnings);
+  };
+  
   const handleAccountToggle = (accountId: string) => {
     const account = accounts.find(acc => acc.id === accountId);
     if (!account?.posting_enabled) {
-      // Don't allow toggling disabled accounts
       return;
     }
     
@@ -68,6 +194,81 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         ? prev.filter(id => id !== accountId)
         : [...prev, accountId]
     );
+  };
+  
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+  
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const files = Array.from(e.dataTransfer.files);
+      uploadFiles(files);
+    }
+  }, []);
+  
+  const uploadFiles = async (files: File[]) => {
+    setIsUploadingMedia(true);
+    
+    try {
+      // Get the first selected platform name for upload validation
+      const firstPlatformName = selectedAccounts.length > 0 
+        ? accounts.find(acc => acc.id === selectedAccounts[0])?.platform.name || 'instagram'
+        : 'instagram';
+        
+      const uploadPromises = files.map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('platform', firstPlatformName);
+        formData.append('post_type', postType);
+        
+        const response = await fetch('/api/social/media/upload/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${localStorage.getItem('token')}`
+          },
+          body: formData
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.errors?.join(', ') || 'Upload failed');
+        }
+        
+        const result = await response.json();
+        return result.file;
+      });
+      
+      const uploadedFiles = await Promise.all(uploadPromises);
+      setMediaFiles(prev => [...prev, ...uploadedFiles]);
+      
+    } catch (error) {
+      console.error('Failed to upload files:', error);
+      alert(`Upload failed: ${error}`);
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
+  
+  const removeMediaFile = (fileId: string) => {
+    setMediaFiles(prev => prev.filter(file => file.id !== fileId));
+  };
+  
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      uploadFiles(files);
+    }
   };
   
   const addHashtag = () => {
@@ -108,7 +309,18 @@ const CreatePost: React.FC<CreatePostProps> = () => {
   };
   
   const handlePublish = async (publishNow: boolean = true) => {
-    if (!content.trim() || selectedAccounts.length === 0) {
+    if (selectedAccounts.length === 0 || validationErrors.length > 0) {
+      return;
+    }
+    
+    // Instagram requires media
+    const hasInstagram = selectedAccounts.some(id => {
+      const account = accounts.find(acc => acc.id === id);
+      return account?.platform.name === 'instagram';
+    });
+    
+    if (hasInstagram && mediaFiles.length === 0) {
+      alert('Instagram requires at least one image or video.');
       return;
     }
     
@@ -120,6 +332,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         post_type: postType,
         hashtags,
         first_comment: firstComment,
+        media_files: mediaFiles.map(file => file.file_url),
         target_accounts: selectedAccounts
       };
       
@@ -130,7 +343,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         await socialAPI.publishPost(createdPost.id, selectedAccounts);
         alert('Post published successfully!');
       } else if (scheduledAt) {
-        // Schedule for later - convert local time to UTC
+        // Schedule for later
         const localDateTime = new Date(scheduledAt);
         const utcDateTime = localDateTime.toISOString();
         await socialAPI.schedulePost(createdPost.id, utcDateTime, selectedAccounts);
@@ -142,6 +355,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       
       // Reset form
       setContent('');
+      setMediaFiles([]);
       setHashtags([]);
       setFirstComment('');
       setSelectedAccounts([]);
@@ -161,7 +375,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
     const selectedPlatformNames = selectedAccounts.map(id => {
       const account = accounts.find(acc => acc.id === id);
       return account?.platform.name;
-    });
+    }).filter((name): name is string => Boolean(name));
     
     const limits = selectedPlatformNames.map(platformName => {
       const platform = platforms.find(p => p.name === platformName);
@@ -171,8 +385,44 @@ const CreatePost: React.FC<CreatePostProps> = () => {
     return Math.min(...limits);
   };
   
+  const getAvailablePostTypes = () => {
+    if (selectedAccounts.length === 0) return ['text', 'image', 'video', 'carousel'];
+    
+    const selectedPlatformNames = selectedAccounts.map(id => {
+      const account = accounts.find(acc => acc.id === id);
+      return account?.platform.name;
+    }).filter((name): name is string => Boolean(name));
+    
+    // Base types available for all platforms
+    let availableTypes = ['image', 'video'];
+    
+    // Add carousel if supported
+    if (selectedPlatformNames.every(platform => ['instagram', 'facebook', 'linkedin'].includes(platform))) {
+      availableTypes.push('carousel');
+    }
+    
+    // Add Instagram-specific types
+    if (selectedPlatformNames.includes('instagram') && selectedPlatformNames.length === 1) {
+      availableTypes.push('story', 'reel');
+    }
+    
+    // Add text posts for non-Instagram platforms
+    if (!selectedPlatformNames.includes('instagram')) {
+      availableTypes.unshift('text');
+    }
+    
+    return availableTypes;
+  };
+  
+  const selectedPlatformNames = selectedAccounts.map(id => {
+    const account = accounts.find(acc => acc.id === id);
+    return account?.platform.name;
+  }).filter((name): name is string => Boolean(name));
+  
   const characterLimit = getCharacterLimit();
   const isOverLimit = characterCount > characterLimit;
+  const availablePostTypes = getAvailablePostTypes();
+  const hasValidationIssues = validationErrors.length > 0;
   
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -239,11 +489,6 @@ const CreatePost: React.FC<CreatePostProps> = () => {
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   )}
-                  {!account.posting_enabled && (
-                    <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
                 </div>
               </div>
             ))}
@@ -251,10 +496,196 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         )}
       </div>
       
+      {/* Post Type Selection */}
+      {selectedAccounts.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-4">Content Type</h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {availablePostTypes.map((type) => {
+              const typeConfig = {
+                text: { label: 'Text Post', icon: '📝', description: 'Text-only post' },
+                image: { label: 'Image', icon: '🖼️', description: 'Single image with caption' },
+                video: { label: 'Video', icon: '🎥', description: 'Single video with caption' },
+                carousel: { label: 'Carousel', icon: '🎠', description: 'Multiple images/videos' },
+                story: { label: 'Story', icon: '📖', description: '24-hour content' },
+                reel: { label: 'Reel', icon: '🎬', description: 'Short vertical video' }
+              };
+              
+              const config = typeConfig[type as keyof typeof typeConfig];
+              
+              return (
+                <button
+                  key={type}
+                  onClick={() => setPostType(type as any)}
+                  className={`p-4 text-center rounded-lg border-2 transition-all ${
+                    postType === type
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">{config.icon}</div>
+                  <div className="font-medium text-sm">{config.label}</div>
+                  <div className="text-xs text-gray-500 mt-1">{config.description}</div>
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Platform-specific notes */}
+          {selectedPlatformNames.includes('instagram') && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start space-x-2">
+                <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium">Instagram Requirements:</p>
+                  <ul className="mt-1 list-disc list-inside space-y-1">
+                    <li>All posts require at least one image or video</li>
+                    <li>Stories are only available for Business accounts</li>
+                    <li>Reels should be vertical videos (9:16 ratio) for best performance</li>
+                    <li>Videos should be 3-90 seconds for Reels</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Media Upload Section */}
+      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Media Files</h2>
+          <span className="text-sm text-gray-500">
+            {mediaFiles.length} file{mediaFiles.length !== 1 ? 's' : ''} uploaded
+          </span>
+        </div>
+        
+        {/* Drag and drop area */}
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            dragActive 
+              ? 'border-blue-500 bg-blue-50' 
+              : 'border-gray-300 hover:border-gray-400'
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+        >
+          {isUploadingMedia ? (
+            <div className="space-y-2">
+              <svg className="mx-auto h-8 w-8 text-blue-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <p className="text-blue-600 font-medium">Uploading files...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <div>
+                <p className="text-gray-700 font-medium">Drop files here or click to browse</p>
+                <p className="text-sm text-gray-500">Supports JPEG, PNG, GIF, MP4, MOV (max 100MB)</p>
+              </div>
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                onChange={handleFileInput}
+                className="hidden"
+                id="file-input"
+              />
+              <label
+                htmlFor="file-input"
+                className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
+              >
+                Choose Files
+              </label>
+            </div>
+          )}
+        </div>
+        
+        {/* Uploaded files preview */}
+        {mediaFiles.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Uploaded Files</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {mediaFiles.map((file) => (
+                <div key={file.id} className="relative bg-gray-50 rounded-lg p-3">
+                  <div className="aspect-square bg-gray-200 rounded mb-2 flex items-center justify-center overflow-hidden">
+                    {file.file_type === 'image' ? (
+                      <img 
+                        src={file.file_url} 
+                        alt={file.alt_text || file.file_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs text-gray-500">
+                          {file.duration ? `${Math.round(file.duration)}s` : 'Video'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600 truncate" title={file.file_name}>
+                    {file.file_name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {file.file_size_mb.toFixed(1)} MB
+                    {file.width && file.height && ` • ${file.width}×${file.height}`}
+                  </p>
+                  <button
+                    onClick={() => removeMediaFile(file.id)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Validation Alerts */}
+      {(validationErrors.length > 0 || validationWarnings.length > 0) && (
+        <div className="mb-6 space-y-3">
+          {validationErrors.map((error, index) => (
+            <div key={`error-${index}`} className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex">
+                <svg className="w-5 h-5 text-red-400 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <p className="text-red-800 text-sm">{error}</p>
+              </div>
+            </div>
+          ))}
+          
+          {validationWarnings.map((warning, index) => (
+            <div key={`warning-${index}`} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex">
+                <svg className="w-5 h-5 text-yellow-400 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <p className="text-yellow-800 text-sm">{warning}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
       {/* Content Composer */}
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Compose Post</h2>
+          <h2 className="text-lg font-semibold">Caption</h2>
           <div className="flex items-center space-x-2">
             <span className={`text-sm ${isOverLimit ? 'text-red-600' : 'text-gray-500'}`}>
               {characterCount}/{characterLimit}
@@ -271,7 +702,10 @@ const CreatePost: React.FC<CreatePostProps> = () => {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="What's on your mind?"
+            placeholder={selectedPlatformNames.includes('instagram') ? 
+              "Write a caption for your post..." : 
+              "What's on your mind?"
+            }
             rows={6}
             className={`w-full p-4 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
               isOverLimit ? 'border-red-300 bg-red-50' : 'border-gray-300'
@@ -440,7 +874,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={() => handlePublish(false)}
-          disabled={!content.trim() || selectedAccounts.length === 0 || isPublishing}
+          disabled={selectedAccounts.length === 0 || isPublishing}
           className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Save as Draft
@@ -449,7 +883,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         {scheduledAt && (
           <button
             onClick={() => handlePublish(false)}
-            disabled={!content.trim() || selectedAccounts.length === 0 || isPublishing}
+            disabled={selectedAccounts.length === 0 || isPublishing || hasValidationIssues}
             className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPublishing ? 'Scheduling...' : 'Schedule Post'}
@@ -458,7 +892,7 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         
         <button
           onClick={() => handlePublish(true)}
-          disabled={!content.trim() || selectedAccounts.length === 0 || isPublishing || isOverLimit}
+          disabled={selectedAccounts.length === 0 || isPublishing || isOverLimit || hasValidationIssues}
           className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPublishing ? 'Publishing...' : 'Publish Now'}
