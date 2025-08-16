@@ -1776,7 +1776,7 @@ class InstagramDirectCallbackView(APIView):
         try:
             url = "https://graph.instagram.com/me"
             params = {
-                'fields': 'id,username,account_type,media_count,followers_count,follows_count',
+                'fields': 'id,username',
                 'access_token': access_token
             }
             
