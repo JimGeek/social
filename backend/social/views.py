@@ -1635,7 +1635,7 @@ class InstagramDirectConnectView(APIView):
         permissions_scope = [
             'instagram_business_basic',           # Basic access to Instagram business account data
             'instagram_business_content_publish', # Essential for publishing content
-            'instagram_business_manage_comments'  # For comment management
+            'instagram_business_manage_comments'  # For content publishing
         ]
         
         # Create state parameter with user info for callback
@@ -1789,7 +1789,7 @@ class InstagramDirectCallbackView(APIView):
                 print(f"✅ Instagram user data retrieved: {user_data}")
                 return user_data
             else:
-                print(f"❌ Failed to get Instagram user data: {response.text}")
+                import logging; logger = logging.getLogger(__name__); logger.error(f"Instagram user data failed: Status {response.status_code}, Response: {response.text}"); print(f"❌ Failed to get Instagram user data: {response.text}")
                 return None
                 
         except Exception as e:
@@ -1811,7 +1811,7 @@ class InstagramDirectCallbackView(APIView):
                     'access_token': access_token,
                     'token_expires_at': None,  # Instagram Login tokens have longer expiry
                     'status': 'connected',
-                    'permissions': ['user_profile', 'user_media'],
+                    'permissions': ['instagram_business_basic', 'user_media'],
                     'created_by': user,
                     'connection_type': 'instagram_direct'  # Instagram Login API connection
                 }
