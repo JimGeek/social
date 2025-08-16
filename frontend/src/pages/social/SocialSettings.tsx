@@ -75,6 +75,12 @@ const SocialSettings: React.FC<SocialSettingsProps> = () => {
         errorMessage = 'Security validation failed. Please try again.';
       } else if (error === 'token_exchange_failed') {
         errorMessage = `Token exchange failed: ${message || 'Unknown error'}`;
+      } else if (error === 'instagram_direct_token_error') {
+        errorMessage = `Instagram authentication failed: ${message || 'Token exchange failed'}`;
+      } else if (error === 'instagram_direct_user_data_error') {
+        errorMessage = `Instagram connection failed: ${message || 'Could not retrieve account information'}`;
+      } else if (error === 'instagram_direct_account_creation_error') {
+        errorMessage = `Instagram connection failed: ${message || 'Could not save account to database'}`;
       } else if (error === 'authentication_required') {
         errorMessage = 'Authentication expired. Please refresh the page and try again.';
       } else if (error === 'no_authorization_code') {
