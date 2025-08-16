@@ -1627,8 +1627,9 @@ class InstagramDirectConnectView(APIView):
         """Generate Instagram Login API OAuth URL for direct connection"""
         app_id = settings.INSTAGRAM_BASIC_APP_ID  # Instagram App ID for Instagram Login
         # Use ngrok HTTPS URL for Instagram OAuth (Instagram requires HTTPS redirect URIs)
-        ngrok_url = "https://159ddc3326a0.ngrok-free.app"
-        redirect_uri = f"{ngrok_url}/api/social/auth/instagram-direct/callback/"
+        # Use production domain for Instagram OAuth
+        base_url = "https://social-api.marvelhomes.pro"
+        redirect_uri = f"{base_url}/api/social/auth/instagram-direct/callback/"
         
         # Instagram Login API permissions (2025 scopes)
         permissions_scope = [
@@ -1735,8 +1736,9 @@ class InstagramDirectCallbackView(APIView):
             # Use Instagram-specific Graph API endpoint for Instagram Login API (2025 method)
             token_url = "https://api.instagram.com/oauth/access_token"
             # Use ngrok HTTPS URL for Instagram OAuth (Instagram requires HTTPS redirect URIs)
-            ngrok_url = "https://159ddc3326a0.ngrok-free.app"
-            redirect_uri = f"{ngrok_url}/api/social/auth/instagram-direct/callback/"
+            # Use production domain for Instagram OAuth
+            base_url = "https://social-api.marvelhomes.pro"
+            redirect_uri = f"{base_url}/api/social/auth/instagram-direct/callback/"
             
             data = {
                 'client_id': settings.INSTAGRAM_BASIC_APP_ID,
