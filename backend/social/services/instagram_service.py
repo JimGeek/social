@@ -250,6 +250,21 @@ class InstagramService:
             else:
                 error_data = response.json()
                 error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                
+                # Check for token-related errors and update account status
+                if any(token_error in error_message.lower() for token_error in [
+                    'invalid oauth access token',
+                    'cannot parse access token',
+                    'access token',
+                    'token',
+                    'oauth'
+                ]):
+                    # Mark account as having expired token
+                    account.status = 'expired'
+                    account.error_message = f'Instagram access token expired: {error_message}'
+                    account.save()
+                    logger.warning(f"Instagram account {account.account_name} token expired, marked as expired")
+                
                 return {
                     'success': False,
                     'error': f'Failed to create media container: {error_message}',
@@ -333,6 +348,21 @@ class InstagramService:
             else:
                 error_data = response.json()
                 error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                
+                # Check for token-related errors and update account status
+                if any(token_error in error_message.lower() for token_error in [
+                    'invalid oauth access token',
+                    'cannot parse access token',
+                    'access token',
+                    'token',
+                    'oauth'
+                ]):
+                    # Mark account as having expired token
+                    account.status = 'expired'
+                    account.error_message = f'Instagram access token expired: {error_message}'
+                    account.save()
+                    logger.warning(f"Instagram account {account.account_name} token expired, marked as expired")
+                
                 return {
                     'success': False,
                     'error': f'Failed to publish media: {error_message}',
