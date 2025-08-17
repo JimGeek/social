@@ -159,6 +159,10 @@ class FacebookService:
             if post_type == 'story':
                 return self._publish_facebook_story(account, content, media_urls)
             
+            # Handle Facebook Reels differently
+            if post_type == 'reel':
+                return self._publish_facebook_reel(account, content, media_urls)
+            
             url = f"{self.base_url}/{page_id}/feed"
             
             data = {
@@ -1205,6 +1209,229 @@ class FacebookService:
                 
         except Exception as e:
             logger.error(f"Error finishing video story upload: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _publish_facebook_reel(self, account: SocialAccount, content: str, media_urls: List[str]) -> Dict[str, Any]:
+        """
+        Publish a Facebook Reel to a Facebook Page
+        Uses the Facebook video_reels API endpoint
+        """
+        try:
+            if not media_urls or len(media_urls) == 0:
+                return {
+                    'success': False,
+                    'error': 'Facebook Reels require exactly one video file'
+                }
+            
+            if len(media_urls) > 1:
+                return {
+                    'success': False,
+                    'error': 'Facebook Reels support only one video file'
+                }
+            
+            page_id = account.account_id
+            access_token = account.access_token
+            video_url = media_urls[0]
+            
+            # Validate that it's a video file
+            if not self._is_video_file(video_url):
+                return {
+                    'success': False,
+                    'error': 'Facebook Reels require a video file, not an image'
+                }
+            
+            # Use three-phase upload process for Facebook Reels
+            # Phase 1: Start upload and get video_id and upload_url
+            start_response = self._start_facebook_reel_upload(page_id, access_token)
+            if not start_response['success']:
+                return start_response
+            
+            video_id = start_response['video_id']
+            upload_url = start_response['upload_url']
+            
+            # Phase 2: Upload video file to upload_url
+            upload_response = self._upload_video_to_reel_url(upload_url, video_url, access_token)
+            if not upload_response['success']:
+                return upload_response
+            
+            # Phase 3: Finish upload and publish reel
+            finish_response = self._finish_facebook_reel_upload(page_id, access_token, video_id, content)
+            if not finish_response['success']:
+                return finish_response
+            
+            return {
+                'success': True,
+                'post_id': finish_response.get('post_id'),
+                'post_url': f"https://facebook.com/{page_id}/videos/{video_id}/"
+            }
+                
+        except Exception as e:
+            logger.error(f"Error publishing Facebook Reel: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _start_facebook_reel_upload(self, page_id: str, access_token: str) -> Dict[str, Any]:
+        """Phase 1: Start Facebook Reel upload and get video_id and upload_url"""
+        try:
+            url = f"{self.base_url}/{page_id}/video_reels"
+            data = {
+                'upload_phase': 'start',
+                'access_token': access_token
+            }
+            
+            response = requests.post(url, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                video_id = result.get('video_id')
+                upload_url = result.get('upload_url')
+                
+                if video_id and upload_url:
+                    logger.info(f"Started Facebook Reel upload: video_id={video_id}")
+                    return {
+                        'success': True,
+                        'video_id': video_id,
+                        'upload_url': upload_url
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': 'Missing video_id or upload_url in start response'
+                    }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Start upload failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to start Facebook Reel upload: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error starting Facebook Reel upload: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _upload_video_to_reel_url(self, upload_url: str, video_url: str, access_token: str) -> Dict[str, Any]:
+        """Phase 2: Upload video file to the provided upload_url for Reel"""
+        import os
+        
+        try:
+            # Check if video_url is a local file path or URL
+            if video_url.startswith('http'):
+                # Remote URL - download first
+                video_response = requests.get(video_url)
+                if video_response.status_code != 200:
+                    logger.error(f"Failed to download video from {video_url}")
+                    return {
+                        'success': False,
+                        'error': f'Failed to download video from {video_url}'
+                    }
+                video_data = video_response.content
+                filename = video_url.split('/')[-1] if '/' in video_url else 'reel.mp4'
+            else:
+                # Local file path
+                if not os.path.exists(video_url):
+                    logger.error(f"Video file not found: {video_url}")
+                    return {
+                        'success': False,
+                        'error': f'Video file not found: {video_url}'
+                    }
+                
+                with open(video_url, 'rb') as f:
+                    video_data = f.read()
+                filename = os.path.basename(video_url)
+            
+            # Upload video to the provided upload_url
+            files = {
+                'video_file_chunk': (filename, video_data, 'video/mp4')
+            }
+            
+            headers = {
+                'Authorization': f'OAuth {access_token}',
+                'file_url': video_url
+            }
+            
+            # Set longer timeout for video uploads
+            response = requests.post(upload_url, files=files, headers=headers, timeout=300)
+            
+            if response.status_code == 200:
+                result = response.json()
+                success = result.get('success', False)
+                
+                if success:
+                    logger.info(f"Successfully uploaded video to Facebook Reel upload URL")
+                    return {
+                        'success': True
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': 'Upload reported failure in response'
+                    }
+            else:
+                logger.error(f"Video upload to Reel URL failed (Status {response.status_code}): {response.text}")
+                return {
+                    'success': False,
+                    'error': f'Video upload failed with status {response.status_code}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error uploading video to Reel URL: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _finish_facebook_reel_upload(self, page_id: str, access_token: str, video_id: str, description: str = '') -> Dict[str, Any]:
+        """Phase 3: Finish Facebook Reel upload and publish"""
+        try:
+            url = f"{self.base_url}/{page_id}/video_reels"
+            data = {
+                'upload_phase': 'finish',
+                'video_id': video_id,
+                'video_state': 'PUBLISHED',
+                'access_token': access_token
+            }
+            
+            # Add description if provided
+            if description:
+                data['description'] = description
+            
+            response = requests.post(url, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                success = result.get('success', False)
+                post_id = result.get('id') or result.get('post_id')
+                
+                if success:
+                    logger.info(f"Successfully finished Facebook Reel upload: post_id={post_id}")
+                    return {
+                        'success': True,
+                        'post_id': post_id
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': 'Finish upload reported failure in response'
+                    }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Finish upload failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to finish Facebook Reel upload: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error finishing Facebook Reel upload: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)
