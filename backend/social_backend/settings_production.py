@@ -1,7 +1,7 @@
 """
 Production settings for Social Media Manager
 """
-from .settings import *
+from .settings.base import *
 import os
 
 # Override for production

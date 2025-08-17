@@ -164,7 +164,7 @@ class FacebookService:
                 # Note: Facebook Reels API requires Meta app review approval
                 # For now, publish as regular video post with Reel-style description
                 logger.warning("Facebook Reels API requires Meta approval - posting as regular video instead")
-                return self._publish_facebook_reel_fallback(account, content, media_urls)
+                return self._publish_facebook_reel(account, content, media_urls)
             
             url = f"{self.base_url}/{page_id}/feed"
             
@@ -1139,18 +1139,17 @@ class FacebookService:
                     video_data = f.read()
                 filename = os.path.basename(video_url)
             
-            # Upload video to the provided upload_url
-            files = {
-                'video_file_chunk': (filename, video_data, 'video/mp4')
-            }
+            # Upload video with correct headers for Facebook Reels
+            video_size = len(video_data)
             
             headers = {
                 'Authorization': f'OAuth {access_token}',
-                'file_url': video_url
+                'offset': '0',
+                'file_size': str(video_size)
             }
             
             # Set longer timeout for video uploads
-            response = requests.post(upload_url, files=files, headers=headers, timeout=300)
+            response = requests.post(upload_url, data=video_data, headers=headers, timeout=300)
             
             if response.status_code == 200:
                 result = response.json()
@@ -1357,18 +1356,17 @@ class FacebookService:
                     video_data = f.read()
                 filename = os.path.basename(video_url)
             
-            # Upload video to the provided upload_url
-            files = {
-                'video_file_chunk': (filename, video_data, 'video/mp4')
-            }
+            # Upload video with correct headers for Facebook Reels
+            video_size = len(video_data)
             
             headers = {
                 'Authorization': f'OAuth {access_token}',
-                'file_url': video_url
+                'offset': '0',
+                'file_size': str(video_size)
             }
             
             # Set longer timeout for video uploads
-            response = requests.post(upload_url, files=files, headers=headers, timeout=300)
+            response = requests.post(upload_url, data=video_data, headers=headers, timeout=300)
             
             if response.status_code == 200:
                 result = response.json()
