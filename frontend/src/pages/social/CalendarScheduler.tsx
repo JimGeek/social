@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import socialAPI, { SocialPost, SocialAccount, SocialPlatform } from '../../services/socialApi';
+import { convertLocalToUTC, debugTimezone } from '../../utils/timezone';
 
 interface CalendarSchedulerProps {}
 
@@ -134,8 +135,12 @@ const CalendarScheduler: React.FC<CalendarSchedulerProps> = () => {
       const scheduledDateTime = new Date(newDate);
       scheduledDateTime.setHours(hours, minutes);
       
+      // Convert local time to UTC properly
+      debugTimezone(scheduledDateTime, 'Rescheduling Post');
+      const utcDateTime = convertLocalToUTC(scheduledDateTime);
+      
       await socialAPI.updatePost(postId, { 
-        scheduled_at: scheduledDateTime.toISOString() 
+        scheduled_at: utcDateTime 
       });
       await loadCalendarData();
       setShowPostModal(false);

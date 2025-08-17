@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timezone Conversion Test</title>
+</head>
+<body>
+    <h1>Timezone Conversion Test</h1>
+    <p>This test verifies that local time is properly converted to UTC for scheduling.</p>
+    
+    <div id="results"></div>
+
+    <script>
+        function testTimezoneConversion() {
+            const results = document.getElementById('results');
+            
+            // Test case: 11:00 PM IST (today)
+            const testDate = new Date();
+            testDate.setHours(23, 0, 0, 0); // 11:00 PM local time
+            
+            // OLD METHOD (BROKEN)
+            const oldMethod = testDate.toISOString();
+            
+            // NEW METHOD (FIXED)
+            const newMethod = new Date(testDate.getTime() - (testDate.getTimezoneOffset() * 60000)).toISOString();
+            
+            // Expected for IST (UTC+5:30): 11:00 PM IST = 5:30 PM UTC
+            const expectedHourUTC = (23 - 5.5 + 24) % 24; // 17.5 = 5:30 PM
+            
+            results.innerHTML = `
+                <h3>Test Results:</h3>
+                <p><strong>Local Time Selected:</strong> ${testDate.toString()}</p>
+                <p><strong>Old Method (Broken):</strong> ${oldMethod}</p>
+                <p><strong>New Method (Fixed):</strong> ${newMethod}</p>
+                <p><strong>Expected UTC Hour:</strong> ${expectedHourUTC} (5:30 PM UTC)</p>
+                
+                <h4>Analysis:</h4>
+                <p>Local timezone offset: ${testDate.getTimezoneOffset()} minutes</p>
+                <p>Expected behavior: 11:00 PM IST should become 5:30 PM UTC</p>
+                
+                <h4>Verification:</h4>
+                <div style="background: ${newMethod.includes('T17:30:') ? '#d4edda' : '#f8d7da'}; padding: 10px; border-radius: 5px;">
+                    ${newMethod.includes('T17:30:') ? '✅ FIXED: Conversion is correct!' : '❌ ISSUE: Conversion needs adjustment'}
+                </div>
+            `;
+        }
+        
+        // Run test when page loads
+        testTimezoneConversion();
+    </script>
+</body>
+</html>

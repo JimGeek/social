@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import socialAPI, { SocialPlatform, SocialAccount, AIContentSuggestion } from '../../services/socialApi';
 import api from '../../services/api';
+import { convertLocalToUTC, debugTimezone } from '../../utils/timezone';
 
 interface MediaFile {
   id: string;
@@ -334,9 +335,10 @@ const CreatePost: React.FC<CreatePostProps> = () => {
         await socialAPI.publishPost(createdPost.id, [selectedAccount]);
         alert('Post published successfully!');
       } else if (scheduledAt) {
-        // Schedule for later
+        // Schedule for later - properly convert local time to UTC
         const localDateTime = new Date(scheduledAt);
-        const utcDateTime = localDateTime.toISOString();
+        debugTimezone(localDateTime, 'Scheduling Post');
+        const utcDateTime = convertLocalToUTC(localDateTime);
         await socialAPI.schedulePost(createdPost.id, utcDateTime, [selectedAccount]);
         alert('Post scheduled successfully!');
       } else {

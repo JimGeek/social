@@ -539,26 +539,37 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         
         try:
             # Parse and validate the scheduled time with comprehensive timezone handling
+            logger.info(f"TIMEZONE DEBUG - Raw scheduled_at: {scheduled_at} (type: {type(scheduled_at)})")
+            
             if isinstance(scheduled_at, str):
                 # Handle different datetime formats and make timezone-aware
                 if 'Z' in scheduled_at:
                     # ISO format with Z suffix (UTC)
                     scheduled_time = datetime.fromisoformat(scheduled_at.replace('Z', '+00:00'))
+                    logger.info(f"TIMEZONE DEBUG - Parsed as UTC: {scheduled_time}")
                 elif '+' in scheduled_at or scheduled_at.endswith(('00', '30', '45')):
                     # ISO format with timezone offset
                     scheduled_time = datetime.fromisoformat(scheduled_at)
+                    logger.info(f"TIMEZONE DEBUG - Parsed with timezone: {scheduled_time}")
                 else:
                     # Assume local time, make it timezone-aware
                     naive_dt = datetime.fromisoformat(scheduled_at)
                     scheduled_time = timezone.make_aware(naive_dt)
+                    logger.info(f"TIMEZONE DEBUG - Made timezone-aware: {scheduled_time}")
             else:
                 scheduled_time = scheduled_at
+                logger.info(f"TIMEZONE DEBUG - Using datetime object: {scheduled_time}")
             
             # Ensure it's timezone-aware for comparison
             if scheduled_time.tzinfo is None:
                 scheduled_time = timezone.make_aware(scheduled_time)
+                logger.info(f"TIMEZONE DEBUG - Final timezone-aware time: {scheduled_time}")
+            
+            current_time = timezone.now()
+            logger.info(f"TIMEZONE DEBUG - Current time: {current_time}")
+            logger.info(f"TIMEZONE DEBUG - Time comparison: {scheduled_time} <= {current_time} = {scheduled_time <= current_time}")
                 
-            if scheduled_time <= timezone.now():
+            if scheduled_time <= current_time:
                 return Response(
                     {'error': 'Scheduled time must be in the future'}, 
                     status=status.HTTP_400_BAD_REQUEST
