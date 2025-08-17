@@ -121,7 +121,13 @@ class InstagramService:
                                   first_comment: str = None) -> Dict[str, Any]:
         """Publish a single media post to Instagram"""
         try:
-            # Step 1: Create media container
+            # Check if it's a video - if so, post as Reels (Instagram requirement)
+            media_type = self._get_media_type(media_url)
+            if media_type == 'video':
+                logger.info(f"Video detected, posting as Reels instead of regular post")
+                return self._publish_reels_post(account, caption, media_url)
+            
+            # Step 1: Create media container for images
             container_response = self._create_media_container(account, caption, media_url)
             
             if not container_response['success']:
