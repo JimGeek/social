@@ -467,10 +467,9 @@ class SocialPostViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validate that accounts belong to the user and support posting
+        # Validate that accounts support posting
         valid_accounts = SocialAccount.objects.filter(
             id__in=target_accounts,
-            created_by=request.user,
             status='connected',
             posting_enabled=True
         ).values_list('id', flat=True)
@@ -574,7 +573,6 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         # Validate accounts and check posting capability
         valid_accounts = SocialAccount.objects.filter(
             id__in=target_accounts,
-            created_by=request.user,
             status='connected',
             posting_enabled=True
         ).values_list('id', flat=True)
