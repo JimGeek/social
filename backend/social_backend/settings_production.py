@@ -2,9 +2,14 @@
 Production settings for Social Media Manager
 """
 from .settings import *
+import os
 
 # Override for production
 DEBUG = False
+
+def config(key, default=None):
+    """Simple config function to get environment variables"""
+    return os.environ.get(key, default)
 
 # Security settings for production
 SECURE_BROWSER_XSS_FILTER = True
