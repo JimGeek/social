@@ -553,7 +553,7 @@ class FacebookService:
             return {'success': False, 'error': str(e)}
     
     def publish_instagram_post(self, account: SocialAccount, content: str, 
-                             media_urls: List[str] = None, first_comment: str = None) -> Dict[str, Any]:
+                             media_urls: List[str] = None, first_comment: str = None, post_type: str = 'image') -> Dict[str, Any]:
         """
         Publish a post to Instagram Business account via Facebook Graph API
         """
@@ -570,6 +570,10 @@ class FacebookService:
                     'error': 'Instagram requires at least one image or video. Text-only posts are not supported.',
                     'error_code': 'MEDIA_REQUIRED'
                 }
+            
+            # Handle Stories differently
+            if post_type == 'story':
+                return self._publish_instagram_story(instagram_account_id, access_token, content, media_urls[0])
             
             # Handle single media vs multiple media
             if len(media_urls) == 1:
@@ -799,6 +803,81 @@ class FacebookService:
                 
         except Exception as e:
             logger.error(f"Error publishing Instagram carousel: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _publish_instagram_story(self, instagram_account_id: str, access_token: str, 
+                                content: str, media_url: str) -> Dict[str, Any]:
+        """
+        Publish an Instagram Story via Facebook Graph API
+        """
+        try:
+            # Step 1: Create story media container
+            container_url = f"{self.base_url}/{instagram_account_id}/media"
+            
+            # Determine media type
+            if self._is_video_file(media_url):
+                container_data = {
+                    'media_type': 'STORIES',
+                    'video_url': media_url,
+                    'access_token': access_token
+                }
+            else:
+                container_data = {
+                    'media_type': 'STORIES',
+                    'image_url': media_url,
+                    'access_token': access_token
+                }
+            
+            # Stories don't support captions in the same way
+            # Text overlays would need to be added via other methods
+            
+            container_response = requests.post(container_url, data=container_data)
+            
+            if container_response.status_code != 200:
+                error_data = container_response.json()
+                error_message = error_data.get('error', {}).get('message', 'Story container creation failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to create Instagram Story container: {error_message}'
+                }
+            
+            container_result = container_response.json()
+            container_id = container_result.get('id')
+            
+            # Step 2: Publish the story
+            publish_url = f"{self.base_url}/{instagram_account_id}/media_publish"
+            publish_data = {
+                'creation_id': container_id,
+                'access_token': access_token
+            }
+            
+            publish_response = requests.post(publish_url, data=publish_data)
+            
+            if publish_response.status_code == 200:
+                publish_result = publish_response.json()
+                story_id = publish_result.get('id')
+                
+                # Stories don't have permanent URLs, they're temporary
+                story_url = f"https://www.instagram.com/stories/{instagram_account_id}/"
+                
+                return {
+                    'success': True,
+                    'post_id': story_id,
+                    'post_url': story_url
+                }
+            else:
+                error_data = publish_response.json()
+                error_message = error_data.get('error', {}).get('message', 'Story publishing failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to publish Instagram Story: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error publishing Instagram Story via Facebook: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)
