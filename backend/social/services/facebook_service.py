@@ -1088,8 +1088,8 @@ class FacebookService:
                     video_data = f.read()
                 filename = os.path.basename(video_url)
             
-            # Upload video to Facebook page for Story
-            upload_url = f"{self.base_url}/{page_id}/videos"
+            # Use graph-video.facebook.com for video uploads as recommended by Facebook
+            upload_url = f"https://graph-video.facebook.com/v18.0/{page_id}/videos"
             
             files = {
                 'source': (filename, video_data, 'video/mp4')
@@ -1098,10 +1098,11 @@ class FacebookService:
             data = {
                 'access_token': access_token,
                 'published': 'false',  # Upload unpublished to get video_id for Story use
-                'temporary': 'true'     # For Story use
+                'description': 'Video for Facebook Story'
             }
             
-            response = requests.post(upload_url, files=files, data=data)
+            # Set longer timeout for video uploads
+            response = requests.post(upload_url, files=files, data=data, timeout=300)
             
             if response.status_code == 200:
                 result = response.json()
@@ -1109,7 +1110,7 @@ class FacebookService:
                 logger.info(f"Successfully uploaded video to Facebook for Story: {video_id}")
                 return video_id
             else:
-                logger.error(f"Facebook video upload for Story failed: {response.text}")
+                logger.error(f"Facebook video upload for Story failed (Status {response.status_code}): {response.text}")
                 return None
                 
         except Exception as e:
