@@ -960,42 +960,31 @@ class FacebookService:
             }
     
     def _publish_facebook_video_story(self, page_id: str, access_token: str, content: str, video_url: str) -> Dict[str, Any]:
-        """Publish a Facebook Video Story"""
+        """Publish a Facebook Video Story using three-phase upload process"""
         try:
-            # Step 1: Upload video to get video_id
-            video_id = self._upload_video_to_facebook_for_story(page_id, access_token, video_url)
-            if not video_id:
-                return {
-                    'success': False,
-                    'error': 'Failed to upload video for Facebook Story'
-                }
+            # Phase 1: Start upload and get video_id and upload_url
+            start_response = self._start_video_story_upload(page_id, access_token)
+            if not start_response['success']:
+                return start_response
             
-            # Step 2: Publish as video story
-            story_url = f"{self.base_url}/{page_id}/video_stories"
-            story_data = {
-                'video_id': video_id,
-                'upload_phase': 'finish',
-                'access_token': access_token
+            video_id = start_response['video_id']
+            upload_url = start_response['upload_url']
+            
+            # Phase 2: Upload video file to upload_url
+            upload_response = self._upload_video_to_story_url(upload_url, video_url, access_token)
+            if not upload_response['success']:
+                return upload_response
+            
+            # Phase 3: Finish upload and publish story
+            finish_response = self._finish_video_story_upload(page_id, access_token, video_id)
+            if not finish_response['success']:
+                return finish_response
+            
+            return {
+                'success': True,
+                'post_id': finish_response.get('post_id'),
+                'post_url': f"https://facebook.com/stories/{page_id}/"
             }
-            
-            response = requests.post(story_url, data=story_data)
-            
-            if response.status_code == 200:
-                result = response.json()
-                story_id = result.get('id')
-                
-                return {
-                    'success': True,
-                    'post_id': story_id,
-                    'post_url': f"https://facebook.com/stories/{page_id}/"
-                }
-            else:
-                error_data = response.json()
-                error_message = error_data.get('error', {}).get('message', 'Video story publishing failed')
-                return {
-                    'success': False,
-                    'error': f'Failed to publish Facebook video story: {error_message}'
-                }
                 
         except Exception as e:
             logger.error(f"Error publishing Facebook video story: {str(e)}")
@@ -1064,8 +1053,51 @@ class FacebookService:
             logger.error(f"Facebook media upload for Story error: {str(e)}")
             return None
     
-    def _upload_video_to_facebook_for_story(self, page_id: str, access_token: str, video_url: str) -> Optional[str]:
-        """Upload video to Facebook for Story use"""
+    def _start_video_story_upload(self, page_id: str, access_token: str) -> Dict[str, Any]:
+        """Phase 1: Start video story upload and get video_id and upload_url"""
+        try:
+            url = f"{self.base_url}/{page_id}/video_stories"
+            data = {
+                'upload_phase': 'start',
+                'access_token': access_token
+            }
+            
+            response = requests.post(url, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                video_id = result.get('video_id')
+                upload_url = result.get('upload_url')
+                
+                if video_id and upload_url:
+                    logger.info(f"Started Facebook video story upload: video_id={video_id}")
+                    return {
+                        'success': True,
+                        'video_id': video_id,
+                        'upload_url': upload_url
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': 'Missing video_id or upload_url in start response'
+                    }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Start upload failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to start video story upload: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error starting video story upload: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _upload_video_to_story_url(self, upload_url: str, video_url: str, access_token: str) -> Dict[str, Any]:
+        """Phase 2: Upload video file to the provided upload_url"""
         import os
         
         try:
@@ -1075,44 +1107,105 @@ class FacebookService:
                 video_response = requests.get(video_url)
                 if video_response.status_code != 200:
                     logger.error(f"Failed to download video from {video_url}")
-                    return None
+                    return {
+                        'success': False,
+                        'error': f'Failed to download video from {video_url}'
+                    }
                 video_data = video_response.content
                 filename = video_url.split('/')[-1] if '/' in video_url else 'video.mp4'
             else:
                 # Local file path
                 if not os.path.exists(video_url):
                     logger.error(f"Video file not found: {video_url}")
-                    return None
+                    return {
+                        'success': False,
+                        'error': f'Video file not found: {video_url}'
+                    }
                 
                 with open(video_url, 'rb') as f:
                     video_data = f.read()
                 filename = os.path.basename(video_url)
             
-            # Use graph-video.facebook.com for video uploads as recommended by Facebook
-            upload_url = f"https://graph-video.facebook.com/v18.0/{page_id}/videos"
-            
+            # Upload video to the provided upload_url
             files = {
-                'source': (filename, video_data, 'video/mp4')
+                'video_file_chunk': (filename, video_data, 'video/mp4')
             }
             
-            data = {
-                'access_token': access_token,
-                'published': 'false',  # Upload unpublished to get video_id for Story use
-                'description': 'Video for Facebook Story'
+            headers = {
+                'Authorization': f'OAuth {access_token}',
+                'file_url': video_url
             }
             
             # Set longer timeout for video uploads
-            response = requests.post(upload_url, files=files, data=data, timeout=300)
+            response = requests.post(upload_url, files=files, headers=headers, timeout=300)
             
             if response.status_code == 200:
                 result = response.json()
-                video_id = result.get('id')
-                logger.info(f"Successfully uploaded video to Facebook for Story: {video_id}")
-                return video_id
+                success = result.get('success', False)
+                
+                if success:
+                    logger.info(f"Successfully uploaded video to Facebook story upload URL")
+                    return {
+                        'success': True
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': 'Upload reported failure in response'
+                    }
             else:
-                logger.error(f"Facebook video upload for Story failed (Status {response.status_code}): {response.text}")
-                return None
+                logger.error(f"Video upload to story URL failed (Status {response.status_code}): {response.text}")
+                return {
+                    'success': False,
+                    'error': f'Video upload failed with status {response.status_code}'
+                }
                 
         except Exception as e:
-            logger.error(f"Facebook video upload for Story error: {str(e)}")
-            return None
+            logger.error(f"Error uploading video to story URL: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _finish_video_story_upload(self, page_id: str, access_token: str, video_id: str) -> Dict[str, Any]:
+        """Phase 3: Finish video story upload and publish"""
+        try:
+            url = f"{self.base_url}/{page_id}/video_stories"
+            data = {
+                'upload_phase': 'finish',
+                'video_id': video_id,
+                'access_token': access_token
+            }
+            
+            response = requests.post(url, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                success = result.get('success', False)
+                post_id = result.get('post_id')
+                
+                if success:
+                    logger.info(f"Successfully finished Facebook video story upload: post_id={post_id}")
+                    return {
+                        'success': True,
+                        'post_id': post_id
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': 'Finish upload reported failure in response'
+                    }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Finish upload failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to finish video story upload: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error finishing video story upload: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
