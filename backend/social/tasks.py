@@ -158,13 +158,16 @@ def process_scheduled_posts():
     for post in scheduled_posts:
         try:
             # Get target accounts for this post
-            target_account_ids = list(
+            target_account_ids = [
+                str(account_id) for account_id in 
                 post.targets.values_list('account_id', flat=True)
-            )
+            ]
             
             if target_account_ids:
                 # Trigger publication
+                logger.error(f'DEBUG: About to call publish_post.delay for post {post.id} with accounts {target_account_ids}')
                 publish_post.delay(str(post.id), target_account_ids)
+                logger.error(f'DEBUG: Successfully called publish_post.delay for post {post.id}')
                 logger.info(f"Queued post {post.id} for publication")
             else:
                 logger.warning(f"Post {post.id} has no target accounts")
