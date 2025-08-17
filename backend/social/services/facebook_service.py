@@ -147,13 +147,17 @@ class FacebookService:
             }
     
     def publish_post(self, account: SocialAccount, content: str, 
-                    media_urls: List[str] = None, first_comment: str = None) -> Dict[str, Any]:
+                    media_urls: List[str] = None, first_comment: str = None, post_type: str = 'image') -> Dict[str, Any]:
         """
         Publish a post to Facebook page
         """
         try:
             page_id = account.account_id
             access_token = account.access_token
+            
+            # Handle Facebook Stories differently
+            if post_type == 'story':
+                return self._publish_facebook_story(account, content, media_urls)
             
             url = f"{self.base_url}/{page_id}/feed"
             
@@ -882,3 +886,232 @@ class FacebookService:
                 'success': False,
                 'error': str(e)
             }
+    
+    def _publish_facebook_story(self, account: SocialAccount, content: str, media_urls: List[str]) -> Dict[str, Any]:
+        """
+        Publish a Facebook Story to a Facebook Page
+        """
+        try:
+            if not media_urls or len(media_urls) == 0:
+                return {
+                    'success': False,
+                    'error': 'Facebook Stories require at least one image or video'
+                }
+            
+            page_id = account.account_id
+            access_token = account.access_token
+            media_url = media_urls[0]  # Facebook Stories support one media item
+            
+            # Determine if it's a photo or video story
+            if self._is_video_file(media_url):
+                return self._publish_facebook_video_story(page_id, access_token, content, media_url)
+            else:
+                return self._publish_facebook_photo_story(page_id, access_token, content, media_url)
+                
+        except Exception as e:
+            logger.error(f"Error publishing Facebook Story: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _publish_facebook_photo_story(self, page_id: str, access_token: str, content: str, photo_url: str) -> Dict[str, Any]:
+        """Publish a Facebook Photo Story"""
+        try:
+            # Step 1: Upload photo to get photo_id
+            fbid = self._upload_media_to_facebook_for_story(page_id, access_token, photo_url)
+            if not fbid:
+                return {
+                    'success': False,
+                    'error': 'Failed to upload photo for Facebook Story'
+                }
+            
+            # Step 2: Publish as photo story
+            story_url = f"{self.base_url}/{page_id}/photo_stories"
+            story_data = {
+                'photo_id': fbid,
+                'access_token': access_token
+            }
+            
+            response = requests.post(story_url, data=story_data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                story_id = result.get('id')
+                
+                return {
+                    'success': True,
+                    'post_id': story_id,
+                    'post_url': f"https://facebook.com/stories/{page_id}/"
+                }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Photo story publishing failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to publish Facebook photo story: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error publishing Facebook photo story: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _publish_facebook_video_story(self, page_id: str, access_token: str, content: str, video_url: str) -> Dict[str, Any]:
+        """Publish a Facebook Video Story"""
+        try:
+            # Step 1: Upload video to get video_id
+            video_id = self._upload_video_to_facebook_for_story(page_id, access_token, video_url)
+            if not video_id:
+                return {
+                    'success': False,
+                    'error': 'Failed to upload video for Facebook Story'
+                }
+            
+            # Step 2: Publish as video story
+            story_url = f"{self.base_url}/{page_id}/video_stories"
+            story_data = {
+                'video_id': video_id,
+                'upload_phase': 'finish',
+                'access_token': access_token
+            }
+            
+            response = requests.post(story_url, data=story_data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                story_id = result.get('id')
+                
+                return {
+                    'success': True,
+                    'post_id': story_id,
+                    'post_url': f"https://facebook.com/stories/{page_id}/"
+                }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Video story publishing failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to publish Facebook video story: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error publishing Facebook video story: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _upload_media_to_facebook_for_story(self, page_id: str, access_token: str, media_url: str) -> Optional[str]:
+        """Upload media to Facebook for Story use"""
+        import os
+        
+        try:
+            # Check if media_url is a local file path or URL
+            if media_url.startswith('http'):
+                # Remote URL - download first
+                media_response = requests.get(media_url)
+                if media_response.status_code != 200:
+                    logger.error(f"Failed to download media from {media_url}")
+                    return None
+                media_data = media_response.content
+                filename = media_url.split('/')[-1] if '/' in media_url else 'image.jpg'
+            else:
+                # Local file path
+                if not os.path.exists(media_url):
+                    logger.error(f"Media file not found: {media_url}")
+                    return None
+                
+                with open(media_url, 'rb') as f:
+                    media_data = f.read()
+                filename = os.path.basename(media_url)
+            
+            # Upload to Facebook page photos endpoint for Story
+            upload_url = f"{self.base_url}/{page_id}/photos"
+            
+            # Determine proper content type
+            if filename.lower().endswith('.png'):
+                content_type = 'image/png'
+            elif filename.lower().endswith('.gif'):
+                content_type = 'image/gif'
+            else:
+                content_type = 'image/jpeg'
+            
+            files = {
+                'source': (filename, media_data, content_type)
+            }
+            
+            data = {
+                'access_token': access_token,
+                'published': 'false',  # Upload unpublished to get FBID for Story use
+                'temporary': 'true'     # For Story use
+            }
+            
+            response = requests.post(upload_url, files=files, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                fbid = result.get('id')
+                logger.info(f"Successfully uploaded media to Facebook for Story: {fbid}")
+                return fbid
+            else:
+                logger.error(f"Facebook media upload for Story failed: {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Facebook media upload for Story error: {str(e)}")
+            return None
+    
+    def _upload_video_to_facebook_for_story(self, page_id: str, access_token: str, video_url: str) -> Optional[str]:
+        """Upload video to Facebook for Story use"""
+        import os
+        
+        try:
+            # Check if video_url is a local file path or URL
+            if video_url.startswith('http'):
+                # Remote URL - download first
+                video_response = requests.get(video_url)
+                if video_response.status_code != 200:
+                    logger.error(f"Failed to download video from {video_url}")
+                    return None
+                video_data = video_response.content
+                filename = video_url.split('/')[-1] if '/' in video_url else 'video.mp4'
+            else:
+                # Local file path
+                if not os.path.exists(video_url):
+                    logger.error(f"Video file not found: {video_url}")
+                    return None
+                
+                with open(video_url, 'rb') as f:
+                    video_data = f.read()
+                filename = os.path.basename(video_url)
+            
+            # Upload video to Facebook page for Story
+            upload_url = f"{self.base_url}/{page_id}/videos"
+            
+            files = {
+                'source': (filename, video_data, 'video/mp4')
+            }
+            
+            data = {
+                'access_token': access_token,
+                'published': 'false',  # Upload unpublished to get video_id for Story use
+                'temporary': 'true'     # For Story use
+            }
+            
+            response = requests.post(upload_url, files=files, data=data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                video_id = result.get('id')
+                logger.info(f"Successfully uploaded video to Facebook for Story: {video_id}")
+                return video_id
+            else:
+                logger.error(f"Facebook video upload for Story failed: {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Facebook video upload for Story error: {str(e)}")
+            return None

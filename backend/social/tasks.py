@@ -322,7 +322,8 @@ def publish_to_facebook(post: SocialPost, account: SocialAccount, target: Social
             account=account,
             content=content,
             media_urls=post.media_files or [],
-            first_comment=post.first_comment
+            first_comment=post.first_comment,
+            post_type=post.post_type
         )
         
         if result.get('success'):
