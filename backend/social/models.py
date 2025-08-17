@@ -409,7 +409,7 @@ class SocialMediaFile(models.Model):
     
     
     # File details
-    file = models.FileField(upload_to='social_media/%Y/%m/')
+    file = models.FileField(upload_to='social_media/%Y/%m/', max_length=500)
     file_name = models.CharField(max_length=255)
     file_type = models.CharField(max_length=20, choices=FILE_TYPES)
     file_size = models.BigIntegerField()  # Size in bytes
