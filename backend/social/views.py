@@ -455,6 +455,11 @@ class SocialPostViewSet(viewsets.ModelViewSet):
             )
         
         target_accounts = request.data.get('target_accounts', [])
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"POSTING DEBUG - User: {request.user.email}, Target Accounts: {target_accounts}")
+        logger.error(f"POSTING DEBUG - User accounts: {list(SocialAccount.objects.filter(created_by=request.user).values("id", "account_name", "status", "posting_enabled"))}")
         
         if not target_accounts:
             return Response(
@@ -465,7 +470,7 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         # Validate that accounts belong to the user and support posting
         valid_accounts = SocialAccount.objects.filter(
             id__in=target_accounts,
-            created_by=request.user,
+            
             status='connected',
             posting_enabled=True
         ).values_list('id', flat=True)
@@ -478,7 +483,7 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         
         # Create targets for the accounts if they don't exist
         for account_id in valid_accounts:
-            SocialPostTarget.objects.get_or_create(
+            SocialPostTarget.objects.update_or_create(
                 post=post,
                 account_id=account_id,
                 defaults={
@@ -515,6 +520,11 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         
         scheduled_at = request.data.get('scheduled_at')
         target_accounts = request.data.get('target_accounts', [])
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"POSTING DEBUG - User: {request.user.email}, Target Accounts: {target_accounts}")
+        logger.error(f"POSTING DEBUG - User accounts: {list(SocialAccount.objects.filter(created_by=request.user).values("id", "account_name", "status", "posting_enabled"))}")
         
         if not scheduled_at:
             return Response(
@@ -564,7 +574,7 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         # Validate accounts and check posting capability
         valid_accounts = SocialAccount.objects.filter(
             id__in=target_accounts,
-            created_by=request.user,
+            
             status='connected',
             posting_enabled=True
         ).values_list('id', flat=True)
@@ -582,7 +592,7 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         
         # Create targets for the accounts
         for account_id in valid_accounts:
-            SocialPostTarget.objects.get_or_create(
+            SocialPostTarget.objects.update_or_create(
                 post=post,
                 account_id=account_id,
                 defaults={
@@ -2048,7 +2058,7 @@ class PublishPostView(APIView):
                 try:
                     account = SocialAccount.objects.get(
                         id=account_id,
-                        created_by=request.user,
+                        
                         status='connected'
                     )
                     
@@ -2299,7 +2309,7 @@ class CancelPostView(APIView):
             post = get_object_or_404(
                 SocialPost,
                 id=post_id,
-                created_by=request.user,
+                
                 status='scheduled'
             )
             
@@ -3730,7 +3740,7 @@ class PostPerformanceView(APIView):
             
             # Build query
             posts_query = SocialPost.objects.filter(
-                created_by=request.user,
+                
                 published_at__date__gte=start_date,
                 published_at__date__lte=end_date,
                 status='published'
@@ -3923,7 +3933,7 @@ class EngagementAnalysisView(APIView):
             
             # Get analytics data
             analytics_query = SocialAnalytics.objects.filter(
-                post_target__post__created_by=request.user,
+                
                 post_target__post__published_at__gte=start_date,
                 post_target__post__published_at__lte=end_date
             ).select_related('post_target__post', 'post_target__account__platform')
@@ -4116,7 +4126,7 @@ class AutoSyncView(APIView):
             # Get limited connected accounts for faster sync
             # Process only 3 most recently active accounts to avoid timeout
             accounts = SocialAccount.objects.filter(
-                created_by=request.user,
+                
                 status='connected',
                 is_active=True
             ).order_by('-last_sync')[:3]
@@ -4350,7 +4360,7 @@ class PlatformCapabilitiesView(APIView):
                 
                 # Try to get capabilities for user's Instagram accounts
                 user_accounts = SocialAccount.objects.filter(
-                    created_by=request.user,
+                    
                     platform__name='instagram',
                     is_active=True
                 )
