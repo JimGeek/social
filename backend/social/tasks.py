@@ -59,9 +59,15 @@ def publish_post(self, post_id: str, target_account_ids: List[str]):
                         post, account, target
                     )
                 elif account.platform.name == 'instagram':
-                    success, platform_post_id, platform_url, error_message = publish_to_instagram(
-                        post, account, target
-                    )
+                    # Check connection type - Facebook Business Instagram accounts use Facebook API
+                    if account.connection_type == 'facebook_business':
+                        success, platform_post_id, platform_url, error_message = publish_to_facebook_instagram(
+                            post, account, target
+                        )
+                    else:
+                        success, platform_post_id, platform_url, error_message = publish_to_instagram(
+                            post, account, target
+                        )
                 elif account.platform.name == 'linkedin':
                     success, platform_post_id, platform_url, error_message = publish_to_linkedin(
                         post, account, target
@@ -352,6 +358,46 @@ def publish_to_instagram(post: SocialPost, account: SocialAccount, target: Socia
         
         # Publish post
         result = instagram_service.publish_post(
+            account=account,
+            content=content,
+            media_urls=post.media_files or [],
+            first_comment=post.first_comment
+        )
+        
+        if result.get('success'):
+            return (
+                True,
+                result.get('post_id'),
+                result.get('post_url'),
+                None
+            )
+        else:
+            return (False, None, None, result.get('error'))
+            
+    except Exception as e:
+        return (False, None, None, str(e))
+
+def publish_to_facebook_instagram(post: SocialPost, account: SocialAccount, target: SocialPostTarget) -> tuple:
+    """
+    Publish post to Instagram Business account via Facebook Graph API
+    Returns: (success, platform_post_id, platform_url, error_message)
+    
+    Note: Instagram Business accounts connected via Facebook use Facebook Graph API
+    """
+    try:
+        from .services.facebook_service import FacebookService
+        
+        facebook_service = FacebookService()
+        
+        # Prepare content
+        content = target.content_override or post.content
+        if post.hashtags:
+            hashtags = target.hashtags_override or post.hashtags
+            content += '\n\n' + ' '.join([f'#{tag}' for tag in hashtags])
+        
+        # Use Facebook service but post to Instagram endpoint
+        # For Instagram Business accounts, we use Facebook's Instagram API
+        result = facebook_service.publish_instagram_post(
             account=account,
             content=content,
             media_urls=post.media_files or [],

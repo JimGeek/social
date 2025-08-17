@@ -551,3 +551,157 @@ class FacebookService:
         except Exception as e:
             logger.error(f"Facebook video upload error: {str(e)}")
             return {'success': False, 'error': str(e)}
+    
+    def publish_instagram_post(self, account: SocialAccount, content: str, 
+                             media_urls: List[str] = None, first_comment: str = None) -> Dict[str, Any]:
+        """
+        Publish a post to Instagram Business account via Facebook Graph API
+        """
+        try:
+            instagram_account_id = account.account_id
+            access_token = account.access_token
+            
+            # For Instagram posts via Facebook, we need to use the Instagram Content Publishing API
+            # Step 1: Create media container
+            
+            if not media_urls or len(media_urls) == 0:
+                return {
+                    'success': False,
+                    'error': 'Instagram requires at least one image or video. Text-only posts are not supported.',
+                    'error_code': 'MEDIA_REQUIRED'
+                }
+            
+            # Handle single media vs multiple media
+            if len(media_urls) == 1:
+                media_url = media_urls[0]
+                
+                # Determine if it's video or image
+                if self._is_video_file(media_url):
+                    # For videos, use REELS
+                    container_data = {
+                        'media_type': 'REELS',
+                        'video_url': media_url,
+                        'caption': content,
+                        'access_token': access_token
+                    }
+                else:
+                    # For images
+                    container_data = {
+                        'image_url': media_url,
+                        'caption': content,
+                        'access_token': access_token
+                    }
+                
+                # Create container
+                container_url = f"{self.base_url}/{instagram_account_id}/media"
+                container_response = requests.post(container_url, data=container_data)
+                
+                if container_response.status_code != 200:
+                    error_data = container_response.json()
+                    error_message = error_data.get('error', {}).get('message', 'Container creation failed')
+                    return {
+                        'success': False,
+                        'error': f'Failed to create Instagram media container: {error_message}'
+                    }
+                
+                container_result = container_response.json()
+                container_id = container_result.get('id')
+                
+                # For videos (REELS), we need to wait for processing
+                if self._is_video_file(media_url):
+                    # Wait for container to be ready
+                    ready = self._wait_for_instagram_container(instagram_account_id, container_id, access_token)
+                    if not ready:
+                        return {
+                            'success': False,
+                            'error': 'Instagram video container not ready for publishing'
+                        }
+                
+                # Step 2: Publish the container
+                publish_url = f"{self.base_url}/{instagram_account_id}/media_publish"
+                publish_data = {
+                    'creation_id': container_id,
+                    'access_token': access_token
+                }
+                
+                publish_response = requests.post(publish_url, data=publish_data)
+                
+                if publish_response.status_code == 200:
+                    publish_result = publish_response.json()
+                    post_id = publish_result.get('id')
+                    
+                    # Create Instagram URL
+                    if self._is_video_file(media_url):
+                        post_url = f"https://www.instagram.com/reel/{post_id}/"
+                    else:
+                        post_url = f"https://www.instagram.com/p/{post_id}/"
+                    
+                    return {
+                        'success': True,
+                        'post_id': post_id,
+                        'post_url': post_url
+                    }
+                else:
+                    error_data = publish_response.json()
+                    error_message = error_data.get('error', {}).get('message', 'Publishing failed')
+                    return {
+                        'success': False,
+                        'error': f'Failed to publish Instagram post: {error_message}'
+                    }
+            else:
+                # Multiple media - carousel post
+                return {
+                    'success': False,
+                    'error': 'Multiple media Instagram posts via Facebook API not implemented yet'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error publishing Instagram post via Facebook: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _wait_for_instagram_container(self, instagram_account_id: str, container_id: str, 
+                                    access_token: str, max_wait_seconds: int = 60) -> bool:
+        """Wait for Instagram container to be ready for publishing"""
+        import time
+        
+        try:
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait_seconds:
+                # Check container status
+                status_url = f"{self.base_url}/{container_id}"
+                params = {
+                    'access_token': access_token,
+                    'fields': 'status_code'
+                }
+                
+                response = requests.get(status_url, params=params)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    status_code = result.get('status_code', 'UNKNOWN')
+                    
+                    logger.info(f"Instagram container {container_id} status: {status_code}")
+                    
+                    if status_code == 'FINISHED':
+                        return True
+                    elif status_code == 'ERROR':
+                        logger.error(f"Instagram container {container_id} processing failed")
+                        return False
+                    elif status_code in ['IN_PROGRESS', 'PUBLISHED']:
+                        time.sleep(2)
+                        continue
+                else:
+                    logger.warning(f"Failed to check Instagram container status: {response.text}")
+                    time.sleep(2)
+                    continue
+            
+            logger.error(f"Instagram container {container_id} not ready after {max_wait_seconds} seconds")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error waiting for Instagram container: {str(e)}")
+            return False
