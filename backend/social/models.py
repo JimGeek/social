@@ -413,7 +413,7 @@ class SocialMediaFile(models.Model):
     file_name = models.CharField(max_length=255)
     file_type = models.CharField(max_length=20, choices=FILE_TYPES)
     file_size = models.BigIntegerField()  # Size in bytes
-    mime_type = models.CharField(max_length=100)
+    mime_type = models.CharField(max_length=200)
     
     # Image/Video metadata
     width = models.IntegerField(null=True, blank=True)

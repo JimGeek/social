@@ -459,7 +459,7 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"POSTING DEBUG - User: {request.user.email}, Target Accounts: {target_accounts}")
-        logger.error(f"POSTING DEBUG - User accounts: {list(SocialAccount.objects.filter(created_by=request.user).values("id", "account_name", "status", "posting_enabled"))}")
+        logger.error(f"POSTING DEBUG - User accounts: {list(SocialAccount.objects.filter(created_by=request.user).values('id', 'account_name', 'status', 'posting_enabled'))}")
         
         if not target_accounts:
             return Response(
@@ -524,7 +524,7 @@ class SocialPostViewSet(viewsets.ModelViewSet):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"POSTING DEBUG - User: {request.user.email}, Target Accounts: {target_accounts}")
-        logger.error(f"POSTING DEBUG - User accounts: {list(SocialAccount.objects.filter(created_by=request.user).values("id", "account_name", "status", "posting_enabled"))}")
+        logger.error(f"POSTING DEBUG - User accounts: {list(SocialAccount.objects.filter(created_by=request.user).values('id', 'account_name', 'status', 'posting_enabled'))}")
         
         if not scheduled_at:
             return Response(
