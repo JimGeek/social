@@ -161,7 +161,10 @@ class FacebookService:
             
             # Handle Facebook Reels differently
             if post_type == 'reel':
-                return self._publish_facebook_reel(account, content, media_urls)
+                # Note: Facebook Reels API requires Meta app review approval
+                # For now, publish as regular video post with Reel-style description
+                logger.warning("Facebook Reels API requires Meta approval - posting as regular video instead")
+                return self._publish_facebook_reel_fallback(account, content, media_urls)
             
             url = f"{self.base_url}/{page_id}/feed"
             
@@ -1436,3 +1439,107 @@ class FacebookService:
                 'success': False,
                 'error': str(e)
             }
+    
+    def _publish_facebook_reel_fallback(self, account: SocialAccount, content: str, media_urls: List[str]) -> Dict[str, Any]:
+        """
+        Fallback for Facebook Reels - publish as regular video post
+        Used when Facebook Reels API permissions are not available
+        """
+        try:
+            if not media_urls or len(media_urls) == 0:
+                return {
+                    'success': False,
+                    'error': 'Facebook Reels require exactly one video file'
+                }
+            
+            # Validate that it's a video file
+            if not self._is_video_file(media_urls[0]):
+                return {
+                    'success': False,
+                    'error': 'Facebook Reels require a video file, not an image'
+                }
+            
+            # Add note to content that this was intended as a Reel
+            reel_content = f"{content}\n\n📱 Note: Intended as Facebook Reel (requires Meta app approval)"
+            
+            # Publish as regular video post using existing video upload logic
+            page_id = account.account_id
+            access_token = account.access_token
+            video_url = media_urls[0]
+            
+            # Upload video using regular video API
+            video_data = self._prepare_video_data(video_url)
+            if not video_data:
+                return {
+                    'success': False,
+                    'error': 'Failed to prepare video data'
+                }
+            
+            # Upload to Facebook videos endpoint
+            upload_url = f"{self.base_url}/{page_id}/videos"
+            
+            files = {
+                'source': video_data
+            }
+            
+            data = {
+                'description': reel_content,
+                'access_token': access_token,
+                'published': 'true'
+            }
+            
+            response = requests.post(upload_url, files=files, data=data, timeout=300)
+            
+            if response.status_code == 200:
+                result = response.json()
+                video_id = result.get('id')
+                
+                return {
+                    'success': True,
+                    'post_id': video_id,
+                    'post_url': f"https://facebook.com/{page_id}/videos/{video_id}/"
+                }
+            else:
+                error_data = response.json()
+                error_message = error_data.get('error', {}).get('message', 'Video upload failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to upload video as Reel fallback: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in Facebook Reel fallback: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _prepare_video_data(self, video_url: str):
+        """Prepare video data for upload"""
+        import os
+        
+        try:
+            if video_url.startswith('http'):
+                # Remote URL - download first
+                video_response = requests.get(video_url)
+                if video_response.status_code != 200:
+                    logger.error(f"Failed to download video from {video_url}")
+                    return None
+                
+                video_data = video_response.content
+                filename = video_url.split('/')[-1] if '/' in video_url else 'video.mp4'
+                return (filename, video_data, 'video/mp4')
+            else:
+                # Local file path
+                if not os.path.exists(video_url):
+                    logger.error(f"Video file not found: {video_url}")
+                    return None
+                
+                with open(video_url, 'rb') as f:
+                    video_data = f.read()
+                filename = os.path.basename(video_url)
+                return (filename, video_data, 'video/mp4')
+                
+        except Exception as e:
+            logger.error(f"Error preparing video data: {str(e)}")
+            return None
