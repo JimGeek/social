@@ -184,8 +184,8 @@ class FacebookService:
                 
                 if media_fbids:
                     if len(media_fbids) == 1:
-                        # Single image post
-                        data['object_attachment'] = media_fbids[0]
+                        # Single image post - use attached_media format for consistency
+                        data['attached_media'] = [{'media_fbid': media_fbids[0]}]
                     else:
                         # Multiple images - create album
                         data['attached_media'] = [{'media_fbid': fbid} for fbid in media_fbids]
@@ -207,10 +207,20 @@ class FacebookService:
             }
             
         except requests.RequestException as e:
-            logger.error(f"Error publishing Facebook post: {str(e)}")
+            error_details = str(e)
+            # Try to get more detailed error from response
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_json = e.response.json()
+                    if 'error' in error_json:
+                        error_details = f"{error_json['error'].get('message', str(e))} (Code: {error_json['error'].get('code', 'unknown')})"
+                except:
+                    error_details = f"{str(e)} - Response: {e.response.text[:200]}"
+            
+            logger.error(f"Error publishing Facebook post: {error_details}")
             return {
                 'success': False,
-                'error': str(e)
+                'error': error_details
             }
     
     def add_comment(self, account: SocialAccount, post_id: str, comment_text: str) -> bool:
@@ -462,7 +472,14 @@ class FacebookService:
                 logger.info(f"Successfully uploaded media to Facebook: {fbid}")
                 return fbid
             else:
-                logger.error(f"Facebook media upload failed: {response.text}")
+                error_detail = response.text
+                try:
+                    error_json = response.json()
+                    if 'error' in error_json:
+                        error_detail = f"{error_json['error'].get('message', error_detail)} (Code: {error_json['error'].get('code', response.status_code)})"
+                except:
+                    pass
+                logger.error(f"Facebook media upload failed (Status {response.status_code}): {error_detail}")
                 return None
                 
         except Exception as e:
