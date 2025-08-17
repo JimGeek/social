@@ -8,13 +8,10 @@
  * @returns ISO string in UTC
  */
 export const convertLocalToUTC = (localDateTime: Date): string => {
-  // Get the timezone offset in minutes (negative for timezones ahead of UTC)
-  const timezoneOffsetMinutes = localDateTime.getTimezoneOffset();
-  
-  // Adjust the time by subtracting the offset to get true UTC time
-  const utcTime = new Date(localDateTime.getTime() - (timezoneOffsetMinutes * 60000));
-  
-  return utcTime.toISOString();
+  // Actually, toISOString() already does the correct conversion!
+  // When you create a Date object from datetime-local input,
+  // it's already in local timezone and toISOString() converts it properly to UTC
+  return localDateTime.toISOString();
 };
 
 /**
