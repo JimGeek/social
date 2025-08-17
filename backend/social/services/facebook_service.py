@@ -858,6 +858,12 @@ class FacebookService:
             container_result = container_response.json()
             container_id = container_result.get('id')
             
+            # For video stories, wait for processing to complete
+            if self._is_video_file(media_url):
+                wait_result = self._wait_for_instagram_container_ready(instagram_account_id, access_token, container_id)
+                if not wait_result['success']:
+                    return wait_result
+            
             # Step 2: Publish the story
             publish_url = f"{self.base_url}/{instagram_account_id}/media_publish"
             publish_data = {
@@ -1543,3 +1549,71 @@ class FacebookService:
         except Exception as e:
             logger.error(f"Error preparing video data: {str(e)}")
             return None
+    
+    def _wait_for_instagram_container_ready(self, instagram_account_id: str, access_token: str, container_id: str, max_wait_seconds: int = 60) -> Dict[str, Any]:
+        """Wait for Instagram media container to be ready for publishing (especially for videos)"""
+        import time
+        
+        try:
+            logger.info(f"Waiting for Instagram container {container_id} to be ready...")
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait_seconds:
+                # Check container status
+                status_url = f"{self.base_url}/{container_id}"
+                params = {
+                    'access_token': access_token,
+                    'fields': 'id,status_code,status'
+                }
+                
+                response = requests.get(status_url, params=params)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    status_code = result.get('status_code', 'UNKNOWN')
+                    
+                    logger.info(f"Instagram container {container_id} status: {status_code}")
+                    
+                    if status_code == 'FINISHED':
+                        logger.info(f"Instagram container {container_id} is ready for publishing")
+                        return {
+                            'success': True,
+                            'status': status_code
+                        }
+                    elif status_code == 'ERROR':
+                        return {
+                            'success': False,
+                            'error': 'Instagram container processing failed',
+                            'error_code': 'CONTAINER_ERROR'
+                        }
+                    elif status_code in ['IN_PROGRESS', 'PUBLISHED']:
+                        # Wait a bit and check again
+                        time.sleep(3)
+                        continue
+                    else:
+                        logger.warning(f"Unknown Instagram container status: {status_code}")
+                        time.sleep(3)
+                        continue
+                else:
+                    # If we can't check status, try to publish anyway after a short wait
+                    logger.warning(f"Cannot check Instagram container status, waiting 10 seconds...")
+                    time.sleep(10)
+                    return {
+                        'success': True,
+                        'status': 'UNKNOWN_BUT_READY'
+                    }
+            
+            # Timeout reached - try to publish anyway
+            logger.warning(f"Instagram container not ready after {max_wait_seconds} seconds, attempting publish anyway")
+            return {
+                'success': True,
+                'status': 'TIMEOUT_BUT_TRYING'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error waiting for Instagram container ready: {str(e)}")
+            # Don't fail completely, try to publish anyway
+            return {
+                'success': True,
+                'status': 'ERROR_BUT_TRYING'
+            }
