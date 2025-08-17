@@ -183,12 +183,14 @@ class FacebookService:
                             media_fbids.append(fbid)
                 
                 if media_fbids:
+                    # Facebook expects attached_media as JSON string
+                    import json
                     if len(media_fbids) == 1:
-                        # Single image post - use attached_media format for consistency
-                        data['attached_media'] = [{'media_fbid': media_fbids[0]}]
+                        # Single image post
+                        data['attached_media'] = json.dumps([{'media_fbid': media_fbids[0]}])
                     else:
                         # Multiple images - create album
-                        data['attached_media'] = [{'media_fbid': fbid} for fbid in media_fbids]
+                        data['attached_media'] = json.dumps([{'media_fbid': fbid} for fbid in media_fbids])
             
             response = requests.post(url, data=data)
             response.raise_for_status()
