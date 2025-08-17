@@ -56,6 +56,16 @@ class InstagramService:
             Dict with success status, post_id, post_url, and error info
         """
         try:
+            # Auto-refresh token if needed before posting
+            if not self.auto_refresh_if_needed(account):
+                return {
+                    'success': False,
+                    'error': 'Instagram token expired and could not be refreshed. Please reconnect account.',
+                    'error_code': 'TOKEN_EXPIRED',
+                    'post_id': None,
+                    'post_url': None
+                }
+            
             # Validate media requirement
             if not media_urls or len(media_urls) == 0:
                 return {
@@ -762,3 +772,128 @@ class InstagramService:
                 'error_code': 'STORY_CONTAINER_ERROR',
                 'container_id': None
             }
+    
+    def refresh_access_token(self, account: SocialAccount) -> Dict[str, Any]:
+        """
+        Refresh Instagram long-lived access token
+        
+        Instagram tokens expire after 60 days but can be refreshed if:
+        - Token is at least 24 hours old
+        - Token hasn't expired yet
+        - Account has required permissions
+        """
+        try:
+            from django.utils import timezone
+            from datetime import timedelta
+            import requests
+            
+            # Check if token needs refresh (refresh if older than 30 days to be safe)
+            if account.updated_at:
+                token_age = timezone.now() - account.updated_at
+                if token_age < timedelta(days=30):
+                    logger.info(f"Instagram token for {account.account_name} is recent, no refresh needed")
+                    return {'success': True, 'refreshed': False, 'message': 'Token is recent'}
+            
+            logger.info(f"Refreshing Instagram token for {account.account_name}")
+            
+            # Instagram token refresh endpoint
+            refresh_url = f"{self.base_url}/refresh_access_token"
+            
+            params = {
+                'grant_type': 'ig_refresh_token',
+                'access_token': account.access_token
+            }
+            
+            response = requests.get(refresh_url, params=params)
+            
+            if response.status_code == 200:
+                token_data = response.json()
+                new_token = token_data.get('access_token')
+                
+                if new_token:
+                    # Update account with new token
+                    old_token_length = len(account.access_token)
+                    account.access_token = new_token
+                    account.updated_at = timezone.now()
+                    account.status = 'connected'
+                    account.error_message = ''
+                    
+                    # Set expiration to 60 days from now
+                    account.token_expires_at = timezone.now() + timedelta(days=60)
+                    account.save()
+                    
+                    logger.info(f"Successfully refreshed Instagram token for {account.account_name}")
+                    logger.info(f"Token length: {old_token_length} -> {len(new_token)}")
+                    
+                    return {
+                        'success': True,
+                        'refreshed': True,
+                        'new_token_length': len(new_token),
+                        'expires_at': account.token_expires_at,
+                        'message': 'Token refreshed successfully'
+                    }
+                else:
+                    logger.error(f"No access token in refresh response for {account.account_name}")
+                    return {
+                        'success': False,
+                        'error': 'No access token in refresh response',
+                        'response': token_data
+                    }
+            else:
+                error_data = response.json() if response.content else {}
+                error_message = error_data.get('error', {}).get('message', response.text)
+                
+                logger.error(f"Failed to refresh Instagram token for {account.account_name}: {error_message}")
+                
+                # Check if this is a permanent failure (token expired)
+                if 'expired' in error_message.lower() or response.status_code == 400:
+                    account.status = 'expired'
+                    account.error_message = f'Token refresh failed: {error_message}'
+                    account.save()
+                
+                return {
+                    'success': False,
+                    'error': error_message,
+                    'status_code': response.status_code,
+                    'response': error_data
+                }
+                
+        except Exception as e:
+            logger.error(f"Error refreshing Instagram token for {account.account_name}: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def auto_refresh_if_needed(self, account: SocialAccount) -> bool:
+        """
+        Automatically refresh token if it's getting close to expiration
+        Returns True if account is ready to use, False if expired
+        """
+        try:
+            from django.utils import timezone
+            from datetime import timedelta
+            
+            # If we have an expiration date, check if token needs refresh
+            if account.token_expires_at:
+                days_until_expiry = (account.token_expires_at - timezone.now()).days
+                
+                # Refresh if less than 7 days until expiry
+                if days_until_expiry < 7:
+                    logger.info(f"Instagram token for {account.account_name} expires in {days_until_expiry} days, refreshing...")
+                    refresh_result = self.refresh_access_token(account)
+                    return refresh_result.get('success', False)
+            
+            # If no expiration date set, try to refresh anyway (for old tokens)
+            elif account.updated_at:
+                token_age = timezone.now() - account.updated_at
+                if token_age > timedelta(days=30):
+                    logger.info(f"Instagram token for {account.account_name} is {token_age.days} days old, attempting refresh...")
+                    refresh_result = self.refresh_access_token(account)
+                    return refresh_result.get('success', False)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in auto_refresh_if_needed for {account.account_name}: {str(e)}")
+            return False
