@@ -35,7 +35,8 @@ class InstagramService:
     """Instagram Graph API service for posting and account management"""
     
     def __init__(self):
-        self.base_url = "https://graph.facebook.com/v21.0"
+        # Use Instagram Graph API for Instagram Direct accounts
+        self.base_url = "https://graph.instagram.com"
         self.app_id = settings.INSTAGRAM_APP_ID
         self.app_secret = settings.INSTAGRAM_APP_SECRET
     
