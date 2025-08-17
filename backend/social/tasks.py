@@ -712,3 +712,51 @@ def update_account_followers():
         raise
 
 # Analytics report generation removed for standalone app
+
+@shared_task
+def refresh_instagram_tokens():
+    """
+    Automatically refresh Instagram tokens that are close to expiry
+    Runs daily to check all Instagram Direct accounts
+    """
+    try:
+        from .services.instagram_service import InstagramService
+        
+        # Get all connected Instagram Direct accounts
+        instagram_accounts = SocialAccount.objects.filter(
+            platform__name='instagram',
+            connection_type='instagram_direct',
+            status='connected'
+        )
+        
+        logger.info(f"Checking {instagram_accounts.count()} Instagram accounts for token refresh")
+        
+        instagram_service = InstagramService()
+        refreshed_count = 0
+        
+        for account in instagram_accounts:
+            try:
+                # Check if token needs refresh and refresh if needed
+                if instagram_service.auto_refresh_if_needed(account):
+                    logger.info(f"Instagram token check passed for {account.account_name}")
+                    
+                    # Check if it was actually refreshed
+                    if account.updated_at and (timezone.now() - account.updated_at).seconds < 60:
+                        refreshed_count += 1
+                        logger.info(f"Token refreshed for {account.account_name}")
+                else:
+                    logger.warning(f"Instagram token refresh failed for {account.account_name}")
+                    
+            except Exception as e:
+                logger.error(f"Error refreshing token for Instagram account {account.account_name}: {str(e)}")
+                continue
+        
+        logger.info(f"Instagram token refresh completed: {refreshed_count} tokens refreshed")
+        return {
+            'accounts_checked': instagram_accounts.count(),
+            'tokens_refreshed': refreshed_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in refresh_instagram_tokens task: {str(e)}")
+        raise
