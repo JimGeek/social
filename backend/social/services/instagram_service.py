@@ -614,7 +614,13 @@ class InstagramService:
             
             container_id = container_response['container_id']
             
-            # Step 2: Publish the Reels container
+            # Step 2: Wait for container to be ready (videos need processing time)
+            ready_response = self._wait_for_container_ready(account, container_id)
+            
+            if not ready_response['success']:
+                return ready_response
+            
+            # Step 3: Publish the Reels container
             publish_response = self._publish_media_container(account, container_id)
             
             if not publish_response['success']:
@@ -903,3 +909,69 @@ class InstagramService:
         except Exception as e:
             logger.error(f"Error in auto_refresh_if_needed for {account.account_name}: {str(e)}")
             return False
+    
+    def _wait_for_container_ready(self, account: SocialAccount, container_id: str, max_wait_seconds: int = 60) -> Dict[str, Any]:
+        """Wait for media container to be ready for publishing (especially for videos)"""
+        import time
+        import requests
+        
+        try:
+            logger.info(f"Waiting for container {container_id} to be ready...")
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait_seconds:
+                # Check container status
+                status_url = f"{self.base_url}/{container_id}"
+                params = {
+                    'access_token': account.access_token,
+                    'fields': 'id,status_code,status'
+                }
+                
+                response = requests.get(status_url, params=params)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    status_code = result.get('status_code', 'UNKNOWN')
+                    
+                    logger.info(f"Container {container_id} status: {status_code}")
+                    
+                    if status_code == 'FINISHED':
+                        logger.info(f"Container {container_id} is ready for publishing")
+                        return {
+                            'success': True,
+                            'status': status_code,
+                            'error': None
+                        }
+                    elif status_code == 'ERROR':
+                        return {
+                            'success': False,
+                            'error': 'Container processing failed',
+                            'error_code': 'CONTAINER_ERROR'
+                        }
+                    elif status_code in ['IN_PROGRESS', 'PUBLISHED']:
+                        # Wait a bit and check again
+                        time.sleep(2)
+                        continue
+                    else:
+                        logger.warning(f"Unknown container status: {status_code}")
+                        time.sleep(2)
+                        continue
+                else:
+                    logger.error(f"Failed to check container status: {response.text}")
+                    time.sleep(2)
+                    continue
+            
+            # Timeout reached
+            return {
+                'success': False,
+                'error': f'Container not ready after {max_wait_seconds} seconds',
+                'error_code': 'CONTAINER_TIMEOUT'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error waiting for container ready: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'error_code': 'WAIT_ERROR'
+            }
