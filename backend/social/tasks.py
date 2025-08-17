@@ -165,9 +165,7 @@ def process_scheduled_posts():
             
             if target_account_ids:
                 # Trigger publication
-                logger.error(f'DEBUG: About to call publish_post.delay for post {post.id} with accounts {target_account_ids}')
                 publish_post.delay(str(post.id), target_account_ids)
-                logger.error(f'DEBUG: Successfully called publish_post.delay for post {post.id}')
                 logger.info(f"Queued post {post.id} for publication")
             else:
                 logger.warning(f"Post {post.id} has no target accounts")
@@ -373,7 +371,6 @@ def publish_to_instagram(post: SocialPost, account: SocialAccount, target: Socia
     except Exception as e:
         return (False, None, None, str(e))
 
-
 def publish_to_linkedin(post: SocialPost, account: SocialAccount, target: SocialPostTarget) -> tuple:
     """
     Publish post to LinkedIn using LinkedIn API v2
@@ -409,7 +406,6 @@ def publish_to_linkedin(post: SocialPost, account: SocialAccount, target: Social
             
     except Exception as e:
         return (False, None, None, str(e))
-
 
 def sync_facebook_comments(account: SocialAccount):
     """
@@ -581,11 +577,9 @@ def analyze_sentiment(text: str) -> str:
     else:
         return 'neutral'
 
-
 # Analytics Tasks
 
 # Organization-based analytics sync removed for standalone app
-
 
 @shared_task(bind=True, max_retries=2)
 def sync_analytics_for_account(self, account_id: str, days_back: int = 30):
@@ -620,7 +614,6 @@ def sync_analytics_for_account(self, account_id: str, days_back: int = 30):
             raise self.retry(countdown=900)  # Retry after 15 minutes
         raise
 
-
 @shared_task
 def daily_analytics_sync():
     """
@@ -643,7 +636,6 @@ def daily_analytics_sync():
         logger.error(f"Error in daily_analytics_sync: {str(e)}")
         raise
 
-
 @shared_task
 def weekly_analytics_sync():
     """
@@ -665,7 +657,6 @@ def weekly_analytics_sync():
     except Exception as e:
         logger.error(f"Error in weekly_analytics_sync: {str(e)}")
         raise
-
 
 @shared_task
 def update_account_followers():
@@ -719,6 +710,5 @@ def update_account_followers():
     except Exception as e:
         logger.error(f"Error in update_account_followers: {str(e)}")
         raise
-
 
 # Analytics report generation removed for standalone app
