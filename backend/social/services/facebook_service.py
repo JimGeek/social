@@ -650,10 +650,7 @@ class FacebookService:
                     }
             else:
                 # Multiple media - carousel post
-                return {
-                    'success': False,
-                    'error': 'Multiple media Instagram posts via Facebook API not implemented yet'
-                }
+                return self._publish_instagram_carousel(instagram_account_id, access_token, content, media_urls)
                 
         except Exception as e:
             logger.error(f"Error publishing Instagram post via Facebook: {str(e)}")
@@ -705,3 +702,104 @@ class FacebookService:
         except Exception as e:
             logger.error(f"Error waiting for Instagram container: {str(e)}")
             return False
+    
+    def _publish_instagram_carousel(self, instagram_account_id: str, access_token: str, 
+                                   content: str, media_urls: List[str]) -> Dict[str, Any]:
+        """Publish a carousel post to Instagram Business account via Facebook Graph API"""
+        try:
+            # Step 1: Create media containers for each item
+            container_ids = []
+            
+            for media_url in media_urls[:10]:  # Instagram supports max 10 items in carousel
+                # Check if media is video or image
+                if self._is_video_file(media_url):
+                    # Videos in carousel are not supported by Instagram
+                    logger.warning(f"Skipping video {media_url} - videos not supported in Instagram carousel")
+                    continue
+                
+                # Create container for image
+                container_data = {
+                    'image_url': media_url,
+                    'is_carousel_item': 'true',
+                    'access_token': access_token
+                }
+                
+                container_url = f"{self.base_url}/{instagram_account_id}/media"
+                response = requests.post(container_url, data=container_data)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    container_ids.append(result.get('id'))
+                    logger.info(f"Created carousel item container: {result.get('id')}")
+                else:
+                    error_data = response.json()
+                    error_message = error_data.get('error', {}).get('message', 'Container creation failed')
+                    logger.error(f"Failed to create carousel item container: {error_message}")
+                    return {
+                        'success': False,
+                        'error': f'Failed to create carousel item container: {error_message}'
+                    }
+            
+            if len(container_ids) == 0:
+                return {
+                    'success': False,
+                    'error': 'No valid media items for carousel (videos not supported in carousel)'
+                }
+            
+            # Step 2: Create carousel container
+            carousel_data = {
+                'media_type': 'CAROUSEL',
+                'children': ','.join(container_ids),
+                'caption': content,
+                'access_token': access_token
+            }
+            
+            carousel_url = f"{self.base_url}/{instagram_account_id}/media"
+            carousel_response = requests.post(carousel_url, data=carousel_data)
+            
+            if carousel_response.status_code != 200:
+                error_data = carousel_response.json()
+                error_message = error_data.get('error', {}).get('message', 'Carousel creation failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to create carousel container: {error_message}'
+                }
+            
+            carousel_result = carousel_response.json()
+            carousel_container_id = carousel_result.get('id')
+            
+            # Step 3: Publish the carousel
+            publish_url = f"{self.base_url}/{instagram_account_id}/media_publish"
+            publish_data = {
+                'creation_id': carousel_container_id,
+                'access_token': access_token
+            }
+            
+            publish_response = requests.post(publish_url, data=publish_data)
+            
+            if publish_response.status_code == 200:
+                publish_result = publish_response.json()
+                post_id = publish_result.get('id')
+                post_url = f"https://www.instagram.com/p/{post_id}/"
+                
+                logger.info(f"Successfully published Instagram carousel with {len(container_ids)} items")
+                
+                return {
+                    'success': True,
+                    'post_id': post_id,
+                    'post_url': post_url
+                }
+            else:
+                error_data = publish_response.json()
+                error_message = error_data.get('error', {}).get('message', 'Publishing failed')
+                return {
+                    'success': False,
+                    'error': f'Failed to publish Instagram carousel: {error_message}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error publishing Instagram carousel: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
