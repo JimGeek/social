@@ -659,6 +659,12 @@ class InstagramService:
             
             container_id = container_response['container_id']
             
+            # For video stories, wait for processing to complete
+            if self._get_media_type(media_url) == 'video':
+                wait_result = self._wait_for_container_ready(account, container_id)
+                if not wait_result['success']:
+                    return wait_result
+            
             # Step 2: Publish the Story container
             publish_response = self._publish_media_container(account, container_id)
             
